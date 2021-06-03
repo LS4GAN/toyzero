@@ -1,6 +1,6 @@
 #+title: LS4GAN's Toy Zero
 
-This are holds some bare first steps toward LS4GAN.
+Bare first steps toward LS4GAN.  *still work in progress*
 
 * Overview
 

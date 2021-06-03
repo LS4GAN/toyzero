@@ -1,0 +1,52 @@
+#+title: LS4GAN's Toy Zero
+
+This are holds some bare first steps toward LS4GAN.
+
+* Overview
+
+We pick our two domains to consist of LAr TPC detector simulation with
+a quasi 1D and a 2D model for the field response.  The 1D is formed by
+simply zeroing out all off-center contributions to long-range
+induction effects.  Withing the 0-wire region, the responses curves in
+the usual 10 fine bins are kept (thus the "quasi" qualifier).
+
+For eventual training of LS4GAN we identify data samples from the "1D"
+model as "fake" and those from the "2D" model as "real".
+
+* Prepare
+
+Create and activate a Python virtual environment in your favorite
+manner.  Install requirements like:
+
+#+begin_example
+  $ pip install -r requirements.txt
+  $ wirecell-<TAB>
+#+end_example
+
+This will install Wire-Cell's Python package, snakemake, ipython and
+some other needed goodies.
+
+In addition to Wire-Cell's stand-alone Python package, a build of the
+Wire-Cell Toolkit providing the ~wire-cell~ command is required.
+
+* Run toy
+
+Exercising the toy zero involves downloading various files and running
+various programs.  The work is automated through Snakemake.  All may
+be done at top level by running:
+
+#+begin_export 
+  $ snakemake -jall all
+  $ tree data plots
+#+end_export
+
+If you look into the [[file:Snakefile][Snakefile]] you will find the automation is
+factored into these parts:
+
+- resp :: get 2D WCT "response file" and derive from it quasi-1D
+  response file and make some diagnostic plots for each..
+
+- wires :: get WCT "wires file" and make a diagnostic plot.
+
+- depos :: generate sets of ionization point depositions for input to
+  the WCT simulation.

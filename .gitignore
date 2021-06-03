@@ -1,0 +1,6 @@
+*~
+data
+plots
+.snakemake
+.direnv
+.envrc

@@ -1,0 +1,4 @@
+snakemake
+ipython
+jedi==0.17.2
+-e git+git@github.com:wirecell/wire-cell-python.git@master#egg=wire-cell-python

@@ -15,19 +15,44 @@ model as "fake" and those from the "2D" model as "real".
 
 * Prepare
 
-Create and activate a Python virtual environment in your favorite
-manner.  Install requirements like:
+** Wire-Cell Toolkit
+
+WCT libraries and the ~wire-cell~ command are required.  See
+https://wirecell.bnl.gov/ for an entry point.
+
+Check that this works:
+
+#+begin_example
+  $ wire-cell --help
+#+end_example
+
+** Wire-Cell and other Python
+
+The stand-alone ~wire-cell-python~ package, the ~snakemake~ program and
+various other Python 3 packages are required.  It is recommended to
+install them into a Python virtual environment created in whatever way
+you prefer.  One simple way is:
+
+#+begin_example
+  $ python3 -m venv venv
+  $ source venv/bin/activate
+#+end_example
+
+Once in the active Python virtual environment install the packages:
 
 #+begin_example
   $ pip install -r requirements.txt
-  $ wirecell-<TAB>
 #+end_example
 
 This will install Wire-Cell's Python package, snakemake, ipython and
-some other needed goodies.
+some other needed goodies.  Sanity test: 
 
-In addition to Wire-Cell's stand-alone Python package, a build of the
-Wire-Cell Toolkit providing the ~wire-cell~ command is required.
+#+begin_example
+  $ wirecell-<TAB>
+  $ wirecell-util --help
+  $ snakemake --help
+#+end_example
+
 
 * Run toy
 

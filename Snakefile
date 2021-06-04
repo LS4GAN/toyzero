@@ -114,6 +114,15 @@ rule all_depos:
 
 # wct - run wire-cell simulation
 
+# wire-cell \
+# -A depofile=/home/bv/work/pcbro/depomunge/munged-depos.npz
+# -A framefile=munged-frame-sim.npz
+# -A resps_file=/home/bv/work/pcbro/resp/dv-2000v-h2mm0.json.bz2
+# -c cfg/cli-npz-sim-npz.jsonnet
+
+
+
+
 
 rule all:
     input:

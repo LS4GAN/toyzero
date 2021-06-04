@@ -50,3 +50,5 @@ factored into these parts:
 
 - depos :: generate sets of ionization point depositions for input to
   the WCT simulation.
+
+- wct :: run ~wire-cell~ 

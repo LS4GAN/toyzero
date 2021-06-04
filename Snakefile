@@ -50,6 +50,15 @@ rule all_resp:
 
 # wires - get wires file
 
+rule summarize_wires:
+    input:
+        f'data/{{wire}}.{wcdata_ext}'
+    output:
+        'data/{wire}-summary.json'
+    shell: '''
+    wirecell-util wire-summary -o {output} {input}
+    '''
+
 rule plot_wires:
     input:
         f'data/{{wire}}.{wcdata_ext}'
@@ -67,22 +76,47 @@ rule all_wires:
 
 # depos - generate ionization point depositions
 
-# def load_gencfg(w):
-#     return json.load('gencfg/depos.json')
+## warning, as-is, this really only works on APA-CPA-APA detector patterns
+def protodune_boundary(w):
+    det = json.loads(open('data/{wire}-summary.json'.format(wire=w.wire)).read())
+    p1 = det[0]['bb']['minp']
+    p2 = det[0]['bb']['maxp']
+    corn = list()
+    diag = list()
+    for l in "xyz":
+        c = p1[l]
+        dc = p2[l]-p1[l]
+        # warning, pretend we know WCT's SoU here....
+        corn.append(f'{c:.1f}*mm')
+        diag.append(f'{dc:.1f}*mm')
+    return dict(corn = ','.join(corn), diag = ','.join(diag))
 
-# rule gen_depos:
-#     input:
-#         'gencfg/depos.json'
-#     params:
-#         p = load_gencfg
-#     output:
-#         'data/depos.npz'
-#     shell: '''
-#     wirecell-gen depo-lines ---tracks 10 --sets 10 --diagonal --corner --output {output}
+rule gen_depos:
+    input:
+        'data/{wire}-summary.json'
+    params:
+        p = protodune_boundary,
+        tracks = 10,
+        sets = 10
+    output:
+        'data/{wire}-depos.npz'
+    shell: '''
+    wirecell-gen depo-lines \
+    --tracks {params.tracks} --sets {params.sets} \
+    --diagonal '{params.p[diag]}' --corner '{params.p[corn]}' \
+    --output {output}
+    '''
 
+rule all_depos:
+    input:
+        expand(rules.gen_depos.output, wire=wires)
+
+
+# wct - run wire-cell simulation
 
 
 rule all:
     input:
-        rules.all_resp.input,
-        rules.all_wires.input
+        rules.all_resp.output,
+        rules.all_wires.output,
+        rules.all_depos.output

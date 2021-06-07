@@ -2,50 +2,69 @@
 
 Bare first steps toward LS4GAN.  *still work in progress*
 
-* Overview
+* Goals
+:PROPERTIES:
+:CUSTOM_ID: goals
+:END:
 
-We pick our two domains to consist of LAr TPC detector simulation with
-a quasi 1D and a 2D model for the field response.  The 1D is formed by
-simply zeroing out all off-center contributions to long-range
-induction effects.  Withing the 0-wire region, the responses curves in
-the usual 10 fine bins are kept (thus the "quasi" qualifier).
 
-For eventual training of LS4GAN we identify data samples from the "1D"
-model as "fake" and those from the "2D" model as "real".
+After some pre-requirements are met, this package automates the
+preparation for and running of various Wire-Cell Toolkit jobs in order
+to produce datasets for initial exploration of the LS4GAN concept.
 
 * Prepare
+:PROPERTIES:
+:CUSTOM_ID: prepare
+:END:
 
-** Wire-Cell Toolkit
+
+This package requires a few user environment settings needed to
+support use of Wire-Cell Toolkit and Python.  We will assume [[https://direnv.net/][direnv]] is
+used to manage the environment.  To use another environment
+management system, translate the contents of the example [[file:dot.envrc][dot.envrc]].
+
+** Environment
+
+A one time setup of direnv:
+
+#+begin_example
+  $ cd toyzero
+  $ cp dot.envrc .envrc
+  $ emacs .envrc
+  $ direnv allow
+#+end_example
+
+Edit ~.envrc~ to match local installation patterns.
+
+** Check Wire-Cell Toolkit
 
 WCT libraries and the ~wire-cell~ command are required.  See
-https://wirecell.bnl.gov/ for an entry point.
+https://wirecell.bnl.gov/ for an entry point to its installation.
 
-Check that this works:
+If WCT is installed and available, the following should not produce
+error:
 
 #+begin_example
   $ wire-cell --help
+  $ wcsonnet wirecell.jsonnet
+  $ echo $WIRECELL_PATH
 #+end_example
 
-** Wire-Cell and other Python
+The ~WIRECELL_PATH~ should include at least the ~cfg/~ directory provided
+by WCT.  Additional configuration will be in [[file:cfg/][./cfg]] and will be found
+by this package automatically.
+
+** Python
 
 The stand-alone ~wire-cell-python~ package, the ~snakemake~ program and
-various other Python 3 packages are required.  It is recommended to
-install them into a Python virtual environment created in whatever way
-you prefer.  One simple way is:
+various other Python 3 packages are required.  
 
 #+begin_example
-  $ python3 -m venv venv
-  $ source venv/bin/activate
-#+end_example
-
-Once in the active Python virtual environment install the packages:
-
-#+begin_example
+  $ cd toyzero
   $ pip install -r requirements.txt
 #+end_example
 
-This will install Wire-Cell's Python package, snakemake, ipython and
-some other needed goodies.  Sanity test: 
+Some checks:
 
 #+begin_example
   $ wirecell-<TAB>
@@ -54,26 +73,68 @@ some other needed goodies.  Sanity test:
 #+end_example
 
 
-* Run toy
+* Usage
+:PROPERTIES:
+:CUSTOM_ID: usage
+:END:
 
-Exercising the toy zero involves downloading various files and running
-various programs.  The work is automated through Snakemake.  All may
-be done at top level by running:
+Exercising toyzero will automatically download various files from
+Wire-Cell GitHub and run various programs.  
 
 #+begin_export 
   $ snakemake -jall all
   $ tree data plots
 #+end_export
 
-If you look into the [[file:Snakefile][Snakefile]] you will find the automation is
-factored into these parts:
+Looking into the [[file:Snakefile][Snakefile]] one will see the ~all~ target aggregates a
+number of ~all_*~ sub-targets.
 
-- resp :: get 2D WCT "response file" and derive from it quasi-1D
-  response file and make some diagnostic plots for each..
+** resp
 
-- wires :: get WCT "wires file" and make a diagnostic plot.
+The ~all_resp~ target gets 2D WCT "response file" and derive from it
+quasi-1D response file and make some diagnostic plots for each.
 
-- depos :: generate sets of ionization point depositions for input to
-  the WCT simulation.
+** wires
 
-- wct :: run ~wire-cell~ 
+The ~all_wires~ target gets WCT "wires file" and make a diagnostic plot.
+
+** depos
+
+The ~all_depos~ target generates sets of ionization point depositions
+for input to the WCT simulation.
+
+This produces a file
+
+#+begin_example
+  data/{wire}-depos.npz
+#+end_example
+
+Where ~{wire}~ names the wires file.  The file is in Numpy format with
+arrays named like:
+
+#+begin_example
+  depo_data_<N>
+  depo_info_<N>
+#+end_example
+
+The ~<N>~ counts a set of depos which are generated together (eg, an
+"event").  The ~data~ arrays are 2D of shape ~(n, 7)~ where ~n~ is the number
+of depositions, O(1M).  Each depo is a 7-tuple with elements:
+
+1. time
+2. number of electrons
+3. X position
+4. Y position
+5. Z position
+6. longitudinal extent (zero here)
+7. transverse extent (zero here)
+
+Additional ~info~ arrays will be found in the file and can likely be
+ignored here.
+
+** frames
+
+The ~all_frames~ target generates "frame" data from depos by running
+~wire-cell~ using configuration in this package as well as that provided
+by WCT itself for ProtoDUNE-SP.
+

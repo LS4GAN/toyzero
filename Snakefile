@@ -32,7 +32,7 @@ rule get_resp_real:
         real_resps
     run:
         shell("mkdir -p data")
-        shell("mv {input} {output}")
+        shell("mv {resps}.{wcdata_ext} {output}")
 
 rule gen_resp_fake:
     input:
@@ -132,6 +132,27 @@ rule all_depos:
 
 # frames
 
+rule sim_dots:
+    input:
+        config = 'cfg/main-depos-sim-adc.jsonnet'
+    output:
+        json = 'data/sim-graph.json',
+        dot = 'data/sim-graph.dot',
+        png = 'plots/sim-graph.png',
+        pdf = 'plots/sim-graph.pdf'
+    shell: '''
+    wcsonnet \
+    -P cfg \
+    -A input=DEPOS-FILE \
+    -A output=FRAMES-FILE \
+    -A wires=WIRES-FILE \
+    -A resps=RESPS-FILE \
+    {input.config} > {output.json};
+    wirecell-pgraph dotify --jpath=-1 {output.json} {output.dot} ;
+    dot -Tpng -o {output.png} {output.dot} ;
+    dot -Tpdf -o {output.pdf} {output.dot}
+    '''
+
 rule sim_frames:
     input:
         wires = wires_file,
@@ -142,6 +163,7 @@ rule sim_frames:
         frames = domain_frames
     shell: '''
     wire-cell \
+    -l stdout -L info \
     -P cfg \
     -A input={input.depos} \
     -A output={output.frames} \

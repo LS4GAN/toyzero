@@ -118,7 +118,7 @@ arrays named like:
 #+end_example
 
 The ~<N>~ counts a set of depos which are generated together (eg, an
-"event").  The ~data~ arrays are 2D of shape ~(n, 7)~ where ~n~ is the number
+"event").  The ~data~ arrays are 2D of shape ~(7, n)~ where ~n~ is the number
 of depositions, O(1M).  Each depo is a 7-tuple with elements:
 
 1. time
@@ -137,4 +137,37 @@ ignored here.
 The ~all_frames~ target generates "frame" data from depos by running
 ~wire-cell~ using configuration in this package as well as that provided
 by WCT itself for ProtoDUNE-SP.
+
+Frames are saved in a format which supports sparse readout and
+arbitrary channel map.  While space-efficient the schema which the
+arrays follow is not directly useful for applications where 2D images
+are desired.  A post-processing is done to make images and the
+"frames" format is not described further here.
+
+** images
+
+The ~all_images~ target processes "frame" data to produce 2D image data.
+Each frame produces one 2D image for each wire plane.  For each APA, 3
+2D images are produced.  Each "induction" plane, U and V, span their
+channels from both faces of an APA due to the wrapped nature of their
+wires.  The "collection" plane W also spans both faces, though its
+wires are not wrapped.  The first and second halves of the array
+represent their respective face.
+
+Each image is found in an image file as an array named like:
+
+#+begin_example
+image_<apaID>_<planeID>
+#+end_example
+
+Where the IDs are zero-counted indices.  For ProtoDUNE-SP, ~<apaID>~ is
+in ~{0,...,5}~ and ~<planeID>~ is in ~{0,1,2}~.
+
+The arrays are shaped ~(Nchan, Ntick)~ where ~Nchan~ is the number of
+channels and ~Ntick~ is counts the number of ADC samples which the
+readout spans.  For ProtoDUNE-SP, U and V planes have 800 channels and
+W has 960 (480 for each face).  Readout duration can vary and 6000
+ticks (3ms) are chosen here.
+
+*** FIXME add drawings
 

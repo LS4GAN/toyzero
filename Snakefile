@@ -12,7 +12,7 @@ wcdata_ext = "json.bz2"
 ## one "real" and one "fake" set of field responses.  The "fake" is
 ## derived from "real" which is downloaded.  Later we may expand these
 ## to span some set of each.
-resps = "garfield-1d-boundary-path-rev-dune"
+resps = "dune-garfield-1d565"
 wires = "protodune-wires-larsoft-v4"
 
 # some important file names
@@ -32,7 +32,7 @@ rule get_resp_real:
         real_resps
     run:
         shell("mkdir -p data")
-        shell("mv {resps}.{wcdata_ext} {output}")
+        shell("mv {input} {output}")
 
 rule gen_resp_fake:
     input:
@@ -176,9 +176,27 @@ rule all_frames:
     input:
         expand(rules.sim_frames.output, domain=["real","fake"])
 
+
+rule split_images:
+    input:
+        domain_frames
+    output:
+        directory('data/images/{domain}')
+    shell: '''
+    wirecell-util frame-split \
+    -f {output}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{planeletter}}.npz \
+    {input}
+    '''
+
+rule all_images:
+    input:
+        expand(rules.split_images.output, domain=["real","fake"])
+
+
 rule all:
     input:
         rules.all_resp.input,
         rules.all_wires.input,
         rules.all_depos.input,
-        rules.all_frames.input
+        rules.all_frames.input,
+        rules.all_images.input

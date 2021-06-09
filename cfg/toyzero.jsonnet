@@ -74,45 +74,52 @@ local pg = import "pgraph.jsonnet";
 
     }.ret,
 
+    default_seeds: [0, 1, 2, 3, 4],
+    random(seeds = $.default_seeds) : {
+        type: "Random",
+        data: {
+            generator: "default",
+            seeds: seeds,
+        }
+    },
+
+
+    /// Make a drifter for all volumes
+    drifter(vols, lar, rnd=$.random(), time_offset=0, fluctuate=true) : pg.pnode({
+        local xregions = wc.unique_list(std.flattenArrays([v.faces for v in vols])),
+        
+        type: "Drifter",
+        data: lar {
+            rng: wc.tn(rnd),
+            xregions: xregions,
+            time_offset: time_offset,
+            fluctuate: fluctuate,
+        },
+    }, nin=1, nout=1, uses=[rnd]),
+
+    bagger(daq) : pg.pnode({
+        type:'DepoBagger',
+        data: {
+            gate: [0, daq.nticks*daq.tick],
+        },
+    }, nin=1, nout=1),
+    
+
 
     // A pipeline of nodes to simulate one APA.
     //
     // The vol, daq, adc, lar likely comes from params.
     // The noisef should be a file name.
     // fixme: probably should be broken up...
-    apasim(anode, pirs, vol, daq, adc, lar, noisef=null, seeds=[0,1,2,3,4]) : {
-        local random = {
-            type: "Random",
-            data: {
-                generator: "default",
-                seeds: seeds,
-            }
-        },
+    apasim(anode, pirs, vol, daq, adc, lar, noisef=null, rnd=$.random()) : {
 
-        local drifter = pg.pnode({
-            local xregions = wc.unique_list(vol.faces),
-
-            type: "Drifter",
-            data: lar {
-                rng: wc.tn(random),
-                xregions: xregions,
-                time_offset: 0.0,
-                
-                fluctuate: true, 
-            },
-        }, nin=1, nout=1, uses=[random]),
-
-        local bagger = pg.pnode({
-            type:'DepoBagger',
-            data: {
-                gate: [0, daq.nticks*daq.tick],
-            },
-        }, nin=1, nout=1),
+        local apaid = anode.data.ident,
 
         local ductor = pg.pnode({
             type:'DepoTransform',
+            name:'DepoTransformt%d' % apaid,
             data: {
-                rng: wc.tn(random),
+                rng: wc.tn(rnd),
                 anode: wc.tn(anode),
                 pirs: [wc.tn(p) for p in pirs],
                 fluctuate: true,
@@ -123,10 +130,11 @@ local pg = import "pgraph.jsonnet";
                 tick: daq.tick,
                 nsigma: 3,
             },
-        }, nin=1, nout=1, uses=pirs + [anode, random]),
+        }, nin=1, nout=1, uses=pirs + [anode, rnd]),
 
         local reframer = pg.pnode({
             type: 'Reframer',
+            name: 'Reframer%d' % apaid,
             data: {
                 anode: wc.tn(anode),
                 tags: [],
@@ -139,9 +147,10 @@ local pg = import "pgraph.jsonnet";
 
         local digitizer = pg.pnode({
             type: "Digitizer",
+            name: 'Digitizer%d' % apaid,
             data : adc {
                 anode: wc.tn(anode),
-                frame_tag: "orig%d"%anode.data.ident,
+                frame_tag: "orig%d"%apaid,
             }
         }, nin=1, nout=1, uses=[anode]),
 
@@ -150,7 +159,7 @@ local pg = import "pgraph.jsonnet";
 
         local noise_model = {
             type: "EmpiricalNoiseModel",
-            name: "empericalnoise-" + anode.name,
+            name: "emperical-noise-model-%d" % apaid,
             data: {
                 anode: wc.tn(anode),
                 chanstat: if std.type(csdb) == "null" then "" else wc.tn(csdb),
@@ -165,13 +174,13 @@ local pg = import "pgraph.jsonnet";
             type: "AddNoise",
             name: "addnoise-" + noise_model.name,
             data: {
-                rng: wc.tn(random),
+                rng: wc.tn(rnd),
                 model: wc.tn(noise_model),
                 nsamples: daq.nticks,
                 replacement_percentage: 0.02, // random optimization
-            }}, nin=1, nout=1, uses=[random, noise_model]),
+            }}, nin=1, nout=1, uses=[rnd, noise_model]),
         
-        local beg = [drifter, bagger, ductor, reframer],
+        local beg = [ductor, reframer],
 
         local mid = if std.type(noisef) == "null" then [] else [noise],
 

@@ -7,20 +7,31 @@ Bare first steps toward LS4GAN.  *still work in progress*
 :CUSTOM_ID: goals
 :END:
 
-
 After some pre-requirements are met, this package automates the
 preparation for and running of various Wire-Cell Toolkit jobs in order
-to produce datasets for initial exploration of the LS4GAN concept.
+to produce some initial datasets for initial exploration of the LS4GAN
+concept.
+
+The final results are in the form raw ADC waveform arrays in
+per-channel rows of sampled columns.  Each array spans one of three
+wire planes from one of six anode plane assemblies (APA) of the
+ProtoDUNE-SP detector.
+
+There are two data sets *real* and *fake*.  The *real* uses the full, best
+known 2D response model and the *fake* uses an intentionally wrong
+quasi-1D model which is derived from the 2D model by zeroing all
+responses except those for the central wire.  Note that this quasi-1D
+model is not the same of the even less accurate 1D model as it has
+models the variation within the central wire region.
 
 * Prepare
 :PROPERTIES:
 :CUSTOM_ID: prepare
 :END:
 
-
-This package requires a few user environment settings needed to
-support use of Wire-Cell Toolkit and Python.  We will assume [[https://direnv.net/][direnv]] is
-used to manage the environment.  To use another environment
+This package requires a few user environment settings to support use
+of Wire-Cell Toolkit and various Python packages.  We will assume
+[[https://direnv.net/][direnv]] is used to manage the environment.  To use another environment
 management system, translate the contents of the example [[file:dot.envrc][dot.envrc]].
 
 ** Environment
@@ -30,11 +41,9 @@ A one time setup of direnv:
 #+begin_example
   $ cd toyzero
   $ cp dot.envrc .envrc
-  $ emacs .envrc
+  $ emacs .envrc  # edit to taste
   $ direnv allow
 #+end_example
-
-Edit ~.envrc~ to match local installation patterns.
 
 ** Check Wire-Cell Toolkit
 
@@ -85,6 +94,13 @@ Wire-Cell GitHub and run various programs.
   $ snakemake -jall all
   $ tree data plots
 #+end_export
+
+This can take ten minutes or so depending on how fast your CPU is.
+
+* Details
+:PROPERTIES:
+:CUSTOM_ID: details
+:END:
 
 Looking into the [[file:Snakefile][Snakefile]] one will see the ~all~ target aggregates a
 number of ~all_*~ sub-targets.
@@ -146,28 +162,29 @@ are desired.  A post-processing is done to make images and the
 
 ** images
 
-The ~all_images~ target processes "frame" data to produce 2D image data.
-Each frame produces one 2D image for each wire plane.  For each APA, 3
-2D images are produced.  Each "induction" plane, U and V, span their
-channels from both faces of an APA due to the wrapped nature of their
-wires.  The "collection" plane W also spans both faces, though its
-wires are not wrapped.  The first and second halves of the array
-represent their respective face.
-
-Each image is found in an image file as an array named like:
+The ~all_images~ target processes each "frame" data to produce one 2D
+image for each of three wire planes of each of six anode plane
+assemblies.  The file name and name of the single array in the file
+match.  For example:
 
 #+begin_example
-image_<apaID>_<planeID>
+❯ wirecell-util npzls data/images/real/protodune-orig-0-1-W.npz 
+protodune-orig-0-1-W (960, 6000)
 #+end_example
 
-Where the IDs are zero-counted indices.  For ProtoDUNE-SP, ~<apaID>~ is
-in ~{0,...,5}~ and ~<planeID>~ is in ~{0,1,2}~.
+This file holds one array of 960 channels and 6000 sample time "ticks"
+and is from index=0 from the "real" data, APA ID 1 and plane "W"
+(collection plane aka plane 2 counting from 0).  "U" and "V" are
+induction planes and each will have 800 channels and the
+contemporaneous 6000 ticks.
 
-The arrays are shaped ~(Nchan, Ntick)~ where ~Nchan~ is the number of
-channels and ~Ntick~ is counts the number of ADC samples which the
-readout spans.  For ProtoDUNE-SP, U and V planes have 800 channels and
-W has 960 (480 for each face).  Readout duration can vary and 6000
-ticks (3ms) are chosen here.
+The array may be simply, if not beautifully, visualized with:
 
-*** FIXME add drawings
+#+begin_example
+❯ wirecell-util npz-to-img -o protodune-orig-0-1-W.png \
+  data/images/real/protodune-orig-0-1-W.npz
+#+end_example
+
+[[file:protodune-orig-0-1-W.png]]
+
 

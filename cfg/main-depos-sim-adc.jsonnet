@@ -34,10 +34,15 @@ local apaids = std.range(0, std.length(anodes)-1);
 
 local pirs = tz.pirs(resps, params.daq, params.elec);
 
+local random = tz.random(seeds);
+
+local drifter = tz.drifter(params.det.volumes, params.lar, random);
+local bagger = tz.bagger(params.daq);
+
 local apasim(n) =
     tz.apasim(anodes[n], pirs, params.det.volumes[n],
               params.daq, params.adc, params.lar,
-              noisef, seeds);
+              noisef, random);
 
 local simpipes = [apasim(n) for n in apaids];
 
@@ -45,7 +50,7 @@ local simpipes = [apasim(n) for n in apaids];
 local frames = io.frame_save_npz("frames", output);
 local dump = io.frame_sink();
 
-local body = pg.fan.pipe('DepoFanout', simpipes, 'FrameFanin');
-local full = pg.pipeline([depos,body,frames, dump]);
+local simbody = pg.fan.pipe('DepoSetFanout', simpipes, 'FrameFanin');
+local full = pg.pipeline([depos, drifter, bagger, simbody, frames, dump]);
 tz.main(full)
 

@@ -20,9 +20,9 @@ ProtoDUNE-SP detector.
 There are two data sets *real* and *fake*.  The *real* uses the full, best
 known 2D response model and the *fake* uses an intentionally wrong
 quasi-1D model which is derived from the 2D model by zeroing all
-responses except those for the central wire.  Note that this quasi-1D
-model is not the same of the even less accurate 1D model as it has
-models the variation within the central wire region.
+responses except those for the central wire.  (Note that this quasi-1D
+model is not the same of the even less accurate 1D model as it
+includes the variation within the central wire region.)
 
 * Prepare
 :PROPERTIES:
@@ -31,8 +31,8 @@ models the variation within the central wire region.
 
 This package requires a few user environment settings to support use
 of Wire-Cell Toolkit and various Python packages.  We will assume
-[[https://direnv.net/][direnv]] is used to manage the environment.  To use another environment
-management system, translate the contents of the example [[file:dot.envrc][dot.envrc]].
+[[https://direnv.net/][direnv]] is used to manage the environment.  To use *another environment
+management system*, translate the contents of the example [[file:dot.envrc][dot.envrc]].
 
 ** Environment
 
@@ -47,11 +47,9 @@ A one time setup of direnv:
 
 ** Check Wire-Cell Toolkit
 
-WCT libraries and the ~wire-cell~ command are required.  See
-https://wirecell.bnl.gov/ for an entry point to its installation.
-
-If WCT is installed and available, the following should not produce
-error:
+The Wire-Cell Toolkit program ~wire-cell~ and its libraries are
+required.  See https://wirecell.bnl.gov/ for installation information.
+Check if WCT is available with these commands:
 
 #+begin_example
   $ wire-cell --help
@@ -60,8 +58,8 @@ error:
 #+end_example
 
 The ~WIRECELL_PATH~ should include at least the ~cfg/~ directory provided
-by WCT.  Additional configuration will be in [[file:cfg/][./cfg]] and will be found
-by this package automatically.
+by WCT.  This ~toyzero~ package provides additional configuration in
+[[file:cfg/][./cfg]] which will found automatically.
 
 ** Python
 
@@ -112,14 +110,12 @@ quasi-1D response file and make some diagnostic plots for each.
 
 ** wires
 
-The ~all_wires~ target gets WCT "wires file" and make a diagnostic plot.
+The ~all_wires~ target gets WCT "wires file" and makes a diagnostic plot.
 
 ** depos
 
 The ~all_depos~ target generates sets of ionization point depositions
-for input to the WCT simulation.
-
-This produces a file
+for input to the WCT simulation.  It produces a file:
 
 #+begin_example
   data/{wire}-depos.npz
@@ -145,20 +141,14 @@ of depositions, O(1M).  Each depo is a 7-tuple with elements:
 6. longitudinal extent (zero here)
 7. transverse extent (zero here)
 
-Additional ~info~ arrays will be found in the file and can likely be
+Additional ~info~ arrays will be found in the file and can be
 ignored here.
 
 ** frames
 
-The ~all_frames~ target generates "frame" data from depos by running
-~wire-cell~ using configuration in this package as well as that provided
-by WCT itself for ProtoDUNE-SP.
-
-Frames are saved in a format which supports sparse readout and
-arbitrary channel map.  While space-efficient the schema which the
-arrays follow is not directly useful for applications where 2D images
-are desired.  A post-processing is done to make images and the
-"frames" format is not described further here.
+The ~all_frames~ target generates "frame" data from depos by running the
+Wire-Cell simulation.  The "frame" file format is described elsewhere.
+For here, we treat it as a temporary.
 
 ** images
 

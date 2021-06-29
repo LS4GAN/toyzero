@@ -24,6 +24,26 @@ responses except those for the central wire.  (Note that this quasi-1D
 model is not the same of the even less accurate 1D model as it
 includes the variation within the central wire region.)
 
+For this initial development we accept a number of simplifying
+"cheats" which we will rectify as we gain experience.  They are at
+least the following:
+
+- Use of simulation for both "real" and "fake".  Eventually, "real"
+  will be detector data and "fake" will from our best available
+  simulation (currently 2D Wire Cell).  We may use paired data for
+  evaluating the technique in this stage but can not rely on it going
+  forward.
+
+- Our initial /data tier/ is that of *ADC waveforms* and those from only
+  ionization electrons from *ideal tracks* and in particular *excluding
+  noise* effects.  We eventually will use realistic track simulation
+  (Geant4) and will include noise.  When adding noise we will switch
+  to a /data tier/ of *reconstructed signal waveforms*.  To produce them
+  we will include *noise models* in the simulation and apply *noise
+  filtering* to both the fake simulation and the real detector data
+  just prior to applying *signal processing*.
+
+
 * Prepare
 :PROPERTIES:
 :CUSTOM_ID: prepare

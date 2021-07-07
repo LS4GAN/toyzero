@@ -232,9 +232,9 @@ rule split_images:
 
 rule plot_split_images:
     input:
-        'data/images/real/protodune-orig-0-5-U.npz'
+        'data/images/{domain}/protodune-orig-0-5-U.npz'
     output:
-        'plots/images/real/{cmap}/protodune-orig-0-5-U.{ext}'
+        'plots/images/{domain}/{cmap}/protodune-orig-0-5-U.{ext}'
     shell: '''
     wirecell-util npz-to-img --cmap {wildcards.cmap} \
     --zoom 400:600,700:1300 --mask 0 --vmin -3 --vmax 3 \
@@ -245,6 +245,7 @@ rule all_images:
     input:
         expand(rules.split_images.output, domain=["real","fake"]),
         expand(rules.plot_split_images.output,
+               domain=["real","fake"],
                ext=["png", "pdf", "svg"],
                cmap=["Spectral", "terrain", "coolwarm", "viridis"])
 

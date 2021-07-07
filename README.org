@@ -326,7 +326,8 @@ The array may be visualized with many options with this command:
      -o junk.png data/images/real/protodune-orig-0-5-U.npz
 #+end_example
 
-A few color map examples.
+A few color map examples with command like tha bove.  Note, 0 value is
+masked to white regardless of color map.
 
 - "coolwarm"
 
@@ -343,5 +344,11 @@ A few color map examples.
 
 #+ATTR_HTML: :width 90%
 [[file:plots/images/real/Spectral/protodune-orig-0-5-U.svg]]
+
+  
+- As above but for the "fake" q1d response
+
+#+ATTR_HTML: :width 90%
+[[file:plots/images/fake/Spectral/protodune-orig-0-5-U.svg]]
 
   

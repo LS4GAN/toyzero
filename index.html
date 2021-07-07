@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2021-07-07 Wed 16:18 -->
+<!-- 2021-07-07 Wed 16:30 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>LS4GAN's Toy Zero</title>
@@ -324,7 +324,7 @@ management system</b>, translate the contents of the example <a href="dot.envrc"
 A one time setup of direnv:
 </p>
 
-<pre class="example" id="org4a8de1d">
+<pre class="example" id="org5526221">
 $ cd toyzero
 $ cp dot.envrc .envrc
 $ emacs .envrc  # edit to taste
@@ -342,7 +342,7 @@ required.  See <a href="https://wirecell.bnl.gov/">https://wirecell.bnl.gov/</a>
 Check if WCT is available with these commands:
 </p>
 
-<pre class="example" id="org77b0c72">
+<pre class="example" id="org649f186">
 $ wire-cell --help
 $ wcsonnet wirecell.jsonnet
 $ echo $WIRECELL_PATH
@@ -364,7 +364,7 @@ The stand-alone <code>wire-cell-python</code> package, the <code>snakemake</code
 various other Python 3 packages are required.  
 </p>
 
-<pre class="example" id="org4d3fa27">
+<pre class="example" id="org74946d6">
 $ cd toyzero
 $ pip install -r requirements.txt
 </pre>
@@ -373,7 +373,7 @@ $ pip install -r requirements.txt
 Some checks:
 </p>
 
-<pre class="example" id="orgde0b0b5">
+<pre class="example" id="orgda716d3">
 $ wirecell-&lt;TAB&gt;
 $ wirecell-util --help
 $ snakemake --help
@@ -389,7 +389,7 @@ having to go through many GitHub pushes we can leverage the <code>direnv</code>
 environment for <code>toyzero</code> use:
 </p>
 
-<pre class="example" id="orgb2b4cd3">
+<pre class="example" id="orgfe3de1e">
 $ git clone git@github.com:wirecell/wire-cell-python.git
 $ cd wire-cell-python/
 $ pip install -U -e .
@@ -444,13 +444,13 @@ transverse pitch direction (Y-axis) when it is at the moment of time
 </p>
 
 
-<div id="org3760c6d" class="figure">
+<div id="org9fa5f62" class="figure">
 <p><img src="plots/fake-resps-diagnostic.png" alt="fake-resps-diagnostic.png" width="90%" />
 </p>
 </div>
 
 
-<div id="orgdf515d1" class="figure">
+<div id="org2dc55b2" class="figure">
 <p><img src="plots/real-resps-diagnostic.png" alt="real-resps-diagnostic.png" width="90%" />
 </p>
 </div>
@@ -478,7 +478,7 @@ The <code>all_depos</code> target generates sets of ionization point depositions
 for input to the WCT simulation.  It produces a file:
 </p>
 
-<pre class="example" id="orgd754649">
+<pre class="example" id="org6a325b6">
 data/{wire}-depos.npz
 </pre>
 
@@ -487,7 +487,7 @@ Where <code>{wire}</code> names the wires file.  The file is in Numpy format wit
 arrays named like:
 </p>
 
-<pre class="example" id="org53d7195">
+<pre class="example" id="orgb83936e">
 depo_data_&lt;N&gt;
 depo_info_&lt;N&gt;
 </pre>
@@ -519,7 +519,7 @@ showing distribution of depo times and the depo locations.
 </p>
 
 
-<div id="org98abae5" class="figure">
+<div id="orgfc8172e" class="figure">
 <p><img src="plots/depos-diagnostic.png" alt="depos-diagnostic.png" width="90%" />
 </p>
 </div>
@@ -560,7 +560,7 @@ the second is a PNG directly from <code>matplotlib</code> at its default DPI.
 </p>
 
 
-<div id="org57b1894" class="figure">
+<div id="orga54d596" class="figure">
 <p><img src="plots/hidpi/frames-fake-apa0.png" alt="frames-fake-apa0.png" width="90%" />
 </p>
 </div>
@@ -570,7 +570,7 @@ to the same data as PNG at default DPI from matplotlib:
 </p>
 
 
-<div id="org17cff29" class="figure">
+<div id="org48b9e79" class="figure">
 <p><img src="plots/frames-fake-apa0.png" alt="frames-fake-apa0.png" width="90%" />
 </p>
 </div>
@@ -583,7 +583,7 @@ Some tips to deal with resolution issues
 <ul class="org-ul">
 <li>A PDF hint, if you want more zoom from your <code>evince</code>:</li>
 </ul>
-<pre class="example" id="orgfc604b1">
+<pre class="example" id="org7b4df19">
 ❯ gsettings set org.gnome.Evince page-cache-size 2014
 </pre>
 
@@ -610,7 +610,7 @@ assemblies.  The file name and name of the single array in the file
 match.  For example:
 </p>
 
-<pre class="example" id="org103e2da">
+<pre class="example" id="org64c5132">
 ❯ wirecell-util npzls data/images/real/protodune-orig-0-1-W.npz 
 protodune-orig-0-1-W (960, 6000)
 </pre>
@@ -627,7 +627,7 @@ contemporaneous 6000 ticks.
 The array may be visualized with many options with this command:
 </p>
 
-<pre class="example" id="orge419303">
+<pre class="example" id="orgde58b7b">
 ❯ wirecell-util npz-to-img --help
 Usage: wirecell-util npz-to-img [OPTIONS] NPZFILE
 
@@ -653,7 +653,8 @@ Options:
 </pre>
 
 <p>
-A few color map examples.
+A few color map examples with command like tha bove.  Note, 0 value is
+masked to white regardless of color map.
 </p>
 
 <ul class="org-ul">
@@ -661,7 +662,7 @@ A few color map examples.
 </ul>
 
 
-<div id="orga7d7f8e" class="figure">
+<div id="org334a7ae" class="figure">
 <p><img src="plots/images/real/coolwarm/protodune-orig-0-5-U.png" alt="protodune-orig-0-5-U.png" width="90%" />
 </p>
 </div>
@@ -671,7 +672,7 @@ A few color map examples.
 </ul>
 
 
-<div id="org8a08de4" class="figure">
+<div id="org48d2b53" class="figure">
 <p><img src="plots/images/real/Spectral/protodune-orig-0-5-U.png" alt="protodune-orig-0-5-U.png" width="90%" />
 </p>
 </div>
@@ -682,8 +683,20 @@ A few color map examples.
 </ul>
 
 
-<div id="org4f877a6" class="figure">
+<div id="org189558f" class="figure">
 <p><object type="image/svg+xml" data="plots/images/real/Spectral/protodune-orig-0-5-U.svg" class="org-svg" width="90%">
+Sorry, your browser does not support SVG.</object>
+</p>
+</div>
+
+
+<ul class="org-ul">
+<li>As above but for the "fake" q1d response</li>
+</ul>
+
+
+<div id="org780f8cd" class="figure">
+<p><object type="image/svg+xml" data="plots/images/fake/Spectral/protodune-orig-0-5-U.svg" class="org-svg" width="90%">
 Sorry, your browser does not support SVG.</object>
 </p>
 </div>
@@ -693,7 +706,7 @@ Sorry, your browser does not support SVG.</object>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: BV</p>
-<p class="date">Created: 2021-07-07 Wed 16:18</p>
+<p class="date">Created: 2021-07-07 Wed 16:30</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

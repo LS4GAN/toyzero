@@ -127,9 +127,19 @@ rule gen_depos:
     --output {output}
     '''
 
+rule plot_depos:
+    input:
+        depos_file
+    output:
+        'plots/depos-diagnostic.png'
+    shell: '''
+    wirecell-gen plot-sim {input} {output} -p depo
+    '''
+        
 rule all_depos:
     input:
-        expand(rules.gen_depos.output, wire=wires)
+        expand(rules.gen_depos.output, wire=wires),
+        expand(rules.plot_depos.output, wire=wires)
 
 
 # frames

@@ -99,6 +99,20 @@ Some checks:
   $ snakemake --help
 #+end_example
 
+*** Hacking
+
+The above installs WCT python for use.  To develop that code without
+having to go through many GitHub pushes we can leverage the ~direnv~
+environment for ~toyzero~ use:
+
+#+begin_example
+  $ git clone git@github.com:wirecell/wire-cell-python.git
+  $ cd wire-cell-python/
+  $ pip install -U -e .
+#+end_example
+
+You can now hack on wire-cell-python and your changes are immediately
+made available.
 
 * Usage
 :PROPERTIES:

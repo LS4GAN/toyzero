@@ -109,6 +109,7 @@ def gen_depos_cfg(w):
         diag.append(f'{dc:.1f}*mm')
 
     return dict(tracks = 10, sets = 10, # fixme: get from config file?
+                seed = "1,2,3,4",
                 corn = ','.join(corn), diag = ','.join(diag))
 
 rule gen_depos:
@@ -120,6 +121,7 @@ rule gen_depos:
         depos_file
     shell: '''
     wirecell-gen depo-lines \
+    --seed {params.p[seed]} \
     --tracks {params.p[tracks]} --sets {params.p[sets]} \
     --diagonal '{params.p[diag]}' --corner '{params.p[corn]}' \
     --output {output}

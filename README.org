@@ -196,19 +196,60 @@ of depositions, O(1M).  Each depo is a 7-tuple with elements:
 Additional ~info~ arrays will be found in the file and can be
 ignored here.
 
-A simple summary diagnostic plot is generated showing distribution of
-depo times and the depo locations.
+A simple summary diagnostic plot for the first "event" is generated
+showing distribution of depo times and the depo locations.
 
 #+ATTR_HTML: :width 90%
 [[file:plots/depos-diagnostic.png]]
-
-
 
 ** frames
 
 The ~all_frames~ target generates "frame" data from depos by running the
 Wire-Cell simulation.  The "frame" file format is described elsewhere.
 For here, we treat it as a temporary.
+
+Diagnostic plots for each APA of the first event are made in PDF and
+PNG.  Frame data is both very sparse and also very high resolution and
+this causes substantial problems for visualization.  Default
+visualization often shows *misleading artifacts*.
+
+- png :: at default DPI for ~matplotlib~ expect loss of visual data due
+  to PNG resolution lower than data and due to zero or close to zero
+  falling into the background color.  Increasing DPI can help at the
+  cost of larger files.
+
+- pdf :: most likely to correctly represent that data.  However *beware
+  of antialiasing* that many PDF viewers apply to make images and text
+  look "prettier".  This will also obscure features and add artifacts.
+
+As an example, compare the two images below.  The first is a high-DPI
+PNG rendering (by NETPBM) from the original PDF made by ~matplotlib~ and
+the second is a PNG directly from ~matplotlib~ at its default DPI.
+
+#+ATTR_HTML: :width 90%
+[[file:plots/hidpi/frames-fake-apa0.png]]
+
+to the same data as PNG at default DPI from matplotlib:
+
+#+ATTR_HTML: :width 90%
+[[file:plots/frames-fake-apa0.png]]
+
+
+Some tips to deal with resolution issues
+
+- A PDF hint, if you want more zoom from your ~evince~:
+#+begin_example
+❯ gsettings set org.gnome.Evince page-cache-size 2014
+#+end_example
+
+- Try [[https://matplotlib.org/stable/gallery/color/colormap_reference.html][different color maps]].  If the data has a large enough dynamic
+  range, consider a diverging color map with a white center (eg
+  "seismic").  If this places too many low values into the center
+  color bin then use a continuous color map which changes color at the
+  center and then use a masked array (~numpy.ma.array~) with the central
+  value (eg 0) masked (eg or "coolwarm" or "Spectral" - see examples
+  below).  One example shown below.  Avoid all "rainbow" maps with a
+  green swath in the center and any ending in white such as "terrain".
 
 ** images
 
@@ -228,13 +269,49 @@ and is from index=0 from the "real" data, APA ID 1 and plane "W"
 induction planes and each will have 800 channels and the
 contemporaneous 6000 ticks.
 
-The array may be simply, if not beautifully, visualized with:
+The array may be visualized with many options with this command:
 
 #+begin_example
-❯ wirecell-util npz-to-img -o protodune-orig-0-1-W.png \
-  data/images/real/protodune-orig-0-1-W.npz
+  ❯ wirecell-util npz-to-img --help
+  Usage: wirecell-util npz-to-img [OPTIONS] NPZFILE
+
+    Make an image from an array in an numpy file.
+
+  Options:
+    -o, --output TEXT    Output image file
+    -a, --array TEXT     Array to plot
+    -c, --cmap TEXT      Color map
+    -b, --baseline TEXT  Apply median baseline subtraction or if number,
+                         subtract directly
+    -m, --mask TEXT      Value or range to mask, range is lower-edge inclusive
+    --vmin TEXT          Minimum value (z/color axis)
+    --vmax TEXT          Maximum value (z/color axis)
+    --dpi TEXT           The dots-per-inch resolution
+    -z, --zoom TEXT      A zoom range as 'rmin:rmax,cmin:cmax'
+    --help               Show this message and exit.
+
+  ❯ wirecell-util npz-to-img --cmap Spectral \
+     --zoom 400:600,700:1300 --mask 0 --vmin -3 --vmax 3 \
+     --dpi 600 --baseline=median \
+     -o junk.png data/images/real/protodune-orig-0-5-U.npz
 #+end_example
 
-[[file:protodune-orig-0-1-W.png]]
+A few color map examples.
 
+- "coolwarm"
 
+#+ATTR_HTML: :width 90%
+[[file:plots/images/real/coolwarm/protodune-orig-0-5-U.png]]
+
+- "Spectral"
+
+#+ATTR_HTML: :width 90%
+[[file:plots/images/real/Spectral/protodune-orig-0-5-U.png]]
+
+  
+- "Spectral" as SVG
+
+#+ATTR_HTML: :width 90%
+[[file:plots/images/real/Spectral/protodune-orig-0-5-U.svg]]
+
+  

@@ -184,9 +184,39 @@ rule sim_frames:
     -c {input.config}
     '''
         
+def gen_plot_frames(w):
+    i = int(w.apa)
+    return dict(chb=f'{i},{i+2560}')
+
+rule plot_frames:
+    input:
+        domain_frames
+    output:
+        'plots/frames-{domain}-apa{apa}.{ext}'
+    params:
+        p = gen_plot_frames
+    shell:'''
+    wirecell-gen plot-sim {input} {output} -p frames -b {params.p[chb]}
+    '''
+rule plot_frames_hidpi:
+    input:
+        'plots/frames-{domain}-apa{apa}.pdf'
+    output:
+        'plots/hidpi/frames-{domain}-apa{apa}.png'
+    params:
+
+    shell:'''
+    pdftoppm -rx 600 -ry 600 {input} | pnmtopng > {output}
+    '''
+
+
 rule all_frames:
     input:
-        expand(rules.sim_frames.output, domain=["real","fake"])
+        expand(rules.sim_frames.output, domain=["real","fake"]),
+        expand(rules.plot_frames.output, domain=["real","fake"],
+               ext=["png","pdf"], apa=list(range(6))),
+        expand(rules.plot_frames_hidpi.output, domain=["real","fake"],
+               apa=[0])
 
 
 rule split_images:
@@ -200,9 +230,23 @@ rule split_images:
     {input}
     '''
 
+rule plot_split_images:
+    input:
+        'data/images/real/protodune-orig-0-5-U.npz'
+    output:
+        'plots/images/real/{cmap}/protodune-orig-0-5-U.{ext}'
+    shell: '''
+    wirecell-util npz-to-img --cmap {wildcards.cmap} \
+    --zoom 400:600,700:1300 --mask 0 --vmin -3 --vmax 3 \
+    --dpi 600 --baseline=median -o {output} {input}
+    '''
+
 rule all_images:
     input:
-        expand(rules.split_images.output, domain=["real","fake"])
+        expand(rules.split_images.output, domain=["real","fake"]),
+        expand(rules.plot_split_images.output,
+               ext=["png", "pdf", "svg"],
+               cmap=["Spectral", "terrain", "coolwarm", "viridis"])
 
 
 rule all:

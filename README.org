@@ -111,24 +111,6 @@ Some checks:
   $ snakemake --help
 #+end_example
 
-*** Hacking
-:PROPERTIES:
-:CUSTOM_ID: hack
-:END:
-
-The above installs WCT python for use.  To develop that code without
-having to go through many GitHub pushes we can leverage the ~direnv~
-environment for ~toyzero~ use:
-
-#+begin_example
-  $ git clone git@github.com:wirecell/wire-cell-python.git
-  $ cd wire-cell-python/
-  $ pip install -U -e .
-#+end_example
-
-You can now hack on wire-cell-python and your changes are immediately
-made available.
-
 * Usage
 :PROPERTIES:
 :CUSTOM_ID: usage
@@ -144,13 +126,45 @@ Wire-Cell GitHub and run various programs.
 
 This can take ten minutes or so depending on how fast your CPU is.
 
+* Hacking
+:PROPERTIES:
+:CUSTOM_ID: hack
+:END:
+
+Much of the ~toyzero~ package relies on the ~wire-cell-python~ package.
+You can develop that code locally (instead of push to GitHub +
+reinstall).  We can leverage the ~direnv~ environment for ~toyzero~ to do
+so like:
+
+#+begin_example
+  $ git clone git@github.com:wirecell/wire-cell-python.git
+  $ cd wire-cell-python/
+  $ pip install -U -e .
+#+end_example
+
+You can now hack on wire-cell-python and your changes are immediately
+made available.  If the changes are generally useful, please consider
+making a PR!
+ 
+
 * Details
 :PROPERTIES:
 :CUSTOM_ID: details
 :END:
 
 Looking into the [[file:Snakefile][Snakefile]] one will see the ~all~ target aggregates a
-number of ~all_*~ sub-targets.
+number of ~all_*~ sub-targets.  You may run each ordered, piece-wise
+manner:
+
+#+begin_example
+  $ snakemake -jall all_resp
+  $ snakemake -jall all_wires
+  $ snakemake -jall all_depos
+  $ snakemake -jall all_frames
+  $ snakemake -jall all_images
+#+end_example
+
+Each of these steps are described more in the next subsections.
 
 ** resp
 :PROPERTIES:
@@ -234,48 +248,6 @@ The ~all_frames~ target generates "frame" data from depos by running the
 Wire-Cell simulation.  The "frame" file format is described elsewhere.
 For here, we treat it as a temporary.
 
-Diagnostic plots for each APA of the first event are made in PDF and
-PNG.  Frame data is both very sparse and also very high resolution and
-this causes substantial problems for visualization.  Default
-visualization often shows *misleading artifacts*.
-
-- png :: at default DPI for ~matplotlib~ expect loss of visual data due
-  to PNG resolution lower than data and due to zero or close to zero
-  falling into the background color.  Increasing DPI can help at the
-  cost of larger files.
-
-- pdf :: most likely to correctly represent that data.  However *beware
-  of antialiasing* that many PDF viewers apply to make images and text
-  look "prettier".  This will also obscure features and add artifacts.
-
-As an example, compare the two images below.  The first is a high-DPI
-PNG rendering (by NETPBM) from the original PDF made by ~matplotlib~ and
-the second is a PNG directly from ~matplotlib~ at its default DPI.
-
-#+ATTR_HTML: :width 90%
-[[file:plots/hidpi/frames-fake-apa0.png]]
-
-to the same data as PNG at default DPI from matplotlib:
-
-#+ATTR_HTML: :width 90%
-[[file:plots/frames-fake-apa0.png]]
-
-
-Some tips to deal with resolution issues
-
-- A PDF hint, if you want more zoom from your ~evince~:
-#+begin_example
-❯ gsettings set org.gnome.Evince page-cache-size 2014
-#+end_example
-
-- Try [[https://matplotlib.org/stable/gallery/color/colormap_reference.html][different color maps]].  If the data has a large enough dynamic
-  range, consider a diverging color map with a white center (eg
-  "seismic").  If this places too many low values into the center
-  color bin then use a continuous color map which changes color at the
-  center and then use a masked array (~numpy.ma.array~) with the central
-  value (eg 0) masked (eg or "coolwarm" or "Spectral" - see examples
-  below).  One example shown below.  Avoid all "rainbow" maps with a
-  green swath in the center and any ending in white such as "terrain".
 
 ** images
 :PROPERTIES:
@@ -299,7 +271,73 @@ and is from index=0 from the "real" data, APA ID 1 and plane "W"
 induction planes and each will have 800 channels and the
 contemporaneous 6000 ticks.
 
-The array may be visualized with many options with this command:
+* Plotting
+:PROPERTIES:
+:CUSTOM_ID: plotting
+:END:
+
+Diagnostic plots for each APA of the first event are made in PDF, PNG
+and SVG with different color maps to explore how best to display the
+information.  These image pose problems as they are relatively high
+resolution and high dynamic range but are also sparse.  As such we
+must take care that some visualization will produce very *misleading
+artifacts*.
+
+** Image formats
+:PROPERTIES:
+:CUSTOM_ID: imgfmt
+:END:
+
+
+- png :: At ~matplotlib~ default DPI expect loss of visual data due to
+  the resolution being low and potentially due to low values falling
+  into the "center" color of the color map.  Increasing DPI can help
+  at the cost of larger files.  Exploring different color maps follows.
+
+- pdf :: Likely best format to use for accuracy.  However *beware of
+  antialiasing* that many PDF viewers apply to make images and text
+  look "prettier".  It can obscure features and add artifacts.
+
+- svg :: Much of the benefits of PDF but can be inlined in HTML.
+
+As an example of DPI problems, compare the two images below.  The
+first is a high-DPI PNG rendering (by NETPBM) from the original PDF
+made by ~matplotlib~ and the second is a PNG directly from ~matplotlib~ at
+its default DPI.
+
+#+ATTR_HTML: :width 90%
+[[file:plots/hidpi/frames-fake-apa0.png]]
+
+to the same data as PNG at default DPI from matplotlib:
+
+#+ATTR_HTML: :width 90%
+[[file:plots/frames-fake-apa0.png]]
+
+
+If you need more zoom from your ~evince~ PDF viewer try
+#+begin_example
+❯ gsettings set org.gnome.Evince page-cache-size 2014
+#+end_example
+
+** Color maps
+:PROPERTIES:
+:CUSTOM_ID: cmap
+:END:
+
+Selecting a good [[https://matplotlib.org/stable/gallery/color/colormap_reference.html][color map]] can have a big impact.  Some guidance:
+
+- For bipolar data of large dynamic range consider using "seismic" and
+  symmetric ranges (~vmin/vmax~).
+
+- For bipolar data with low dynamic range, select a symmetric color
+  map such as "coolwarm" and use a masked array to remove the 0 value.
+
+- Avoid "rainbow" color maps with a large central region of a nearly
+  common color.
+
+The ~wire-cell-python~ package provides a command to easily visualize a
+2D Numpy image array in a file with many plotting parameters exposed
+as command line options:
 
 #+begin_example
   ❯ wirecell-util npz-to-img --help
@@ -321,34 +359,53 @@ The array may be visualized with many options with this command:
     --help               Show this message and exit.
 
   ❯ wirecell-util npz-to-img --cmap Spectral \
-     --zoom 400:600,700:1300 --mask 0 --vmin -3 --vmax 3 \
+     --zoom 300:500,0:1000 --mask 0 --vmin -50 --vmax 50 \
      --dpi 600 --baseline=median \
-     -o junk.png data/images/real/protodune-orig-0-5-U.npz
+     -o junk.png data/images/real/protodune-orig-0-2-U.npz
 #+end_example
 
 A few color map examples with command like tha bove.  Note, 0 value is
 masked to white regardless of color map.
 
-- "coolwarm"
+- "coolwarm" (real)
 
 #+ATTR_HTML: :width 90%
-[[file:plots/images/real/coolwarm/protodune-orig-0-5-U.png]]
+[[file:plots/images/real/coolwarm/protodune-orig-0-2-U.png]]
 
-- "Spectral"
+- "seismic" (real)
 
 #+ATTR_HTML: :width 90%
-[[file:plots/images/real/Spectral/protodune-orig-0-5-U.png]]
+[[file:plots/images/real/seismic/protodune-orig-0-2-U.png]]
+
+- "Spectral" (real)
+
+#+ATTR_HTML: :width 90%
+[[file:plots/images/real/Spectral/protodune-orig-0-2-U.png]]
+
+- "viridis" (real)
+
+#+ATTR_HTML: :width 90%
+[[file:plots/images/real/viridis/protodune-orig-0-2-U.png]]
+
+** Real vs Fake
+:PROPERTIES:
+:CUSTOM_ID: realVfake
+:END:
+
+
+We select one event region (U plane) to show "real" 2D vs "fake" q1D,
+both as SVG.  In particular, not how there is "long range induction"
+effects in 2D which are lacking in q1D.
+  
+- Real:
+
+#+ATTR_HTML: :width 90%
+[[file:plots/images/real/seismic/protodune-orig-0-2-U.svg]]
 
   
-- "Spectral" as SVG
+- Fake:
 
 #+ATTR_HTML: :width 90%
-[[file:plots/images/real/Spectral/protodune-orig-0-5-U.svg]]
-
-  
-- As above but for the "fake" q1d response
-
-#+ATTR_HTML: :width 90%
-[[file:plots/images/fake/Spectral/protodune-orig-0-5-U.svg]]
+[[file:plots/images/fake/seismic/protodune-orig-0-2-U.svg]]
 
   

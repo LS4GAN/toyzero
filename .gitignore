@@ -1,9 +1,9 @@
 *~
 data
-plots
 .snakemake
 .direnv
 .envrc
 junk*
 wire-cell-python
 github.com
+wire-cell-toolkit

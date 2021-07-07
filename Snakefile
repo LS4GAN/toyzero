@@ -16,12 +16,12 @@ resps = "dune-garfield-1d565"
 wires = "protodune-wires-larsoft-v4"
 
 # some important file names
-real_resps = f'data/real-resps.{wcdata_ext}'
-fake_resps = f'data/fake-resps.{wcdata_ext}'
-domain_resps = f'data/{{domain}}-resps.{wcdata_ext}'
-wires_file = f'data/wires.{wcdata_ext}'
-depos_file = 'data/depos.npz'
-domain_frames = 'data/{domain}-frames.npz'
+real_resps = f'data/resps/real-resps.{wcdata_ext}'
+fake_resps = f'data/resps/fake-resps.{wcdata_ext}'
+domain_resps = f'data/resps/{{domain}}-resps.{wcdata_ext}'
+wires_file = f'data/wires/wires.{wcdata_ext}'
+depos_file = 'data/depos/depos.npz'
+domain_frames = 'data/frames/{domain}-frames.npz'
 
 # resp - prepare response files
 
@@ -230,14 +230,16 @@ rule split_images:
     {input}
     '''
 
+## note, we try to catch by hand some activity and this is very
+## senstive to random seeding!
 rule plot_split_images:
     input:
-        'data/images/{domain}/protodune-orig-0-5-U.npz'
+        'data/images/{domain}/protodune-orig-0-2-U.npz'
     output:
-        'plots/images/{domain}/{cmap}/protodune-orig-0-5-U.{ext}'
+        'plots/images/{domain}/{cmap}/protodune-orig-0-2-U.{ext}'
     shell: '''
     wirecell-util npz-to-img --cmap {wildcards.cmap} \
-    --zoom 400:600,700:1300 --mask 0 --vmin -3 --vmax 3 \
+    --zoom 300:500,0:1000 --mask 0 --vmin -50 --vmax 50 \
     --dpi 600 --baseline=median -o {output} {input}
     '''
 
@@ -247,7 +249,7 @@ rule all_images:
         expand(rules.plot_split_images.output,
                domain=["real","fake"],
                ext=["png", "pdf", "svg"],
-               cmap=["Spectral", "terrain", "coolwarm", "viridis"])
+               cmap=["seismic", "Spectral", "terrain", "coolwarm", "viridis"])
 
 
 rule all:

@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2021-07-07 Wed 16:30 -->
+<!-- 2021-07-07 Wed 18:01 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>LS4GAN's Toy Zero</title>
@@ -230,21 +230,25 @@
 <ul>
 <li><a href="#env">2.1. Environment</a></li>
 <li><a href="#checks">2.2. Check Wire-Cell Toolkit</a></li>
-<li><a href="#python">2.3. Python</a>
-<ul>
-<li><a href="#hack">2.3.1. Hacking</a></li>
-</ul>
-</li>
+<li><a href="#python">2.3. Python</a></li>
 </ul>
 </li>
 <li><a href="#usage">3. Usage</a></li>
-<li><a href="#details">4. Details</a>
+<li><a href="#hack">4. Hacking</a></li>
+<li><a href="#details">5. Details</a>
 <ul>
-<li><a href="#resp">4.1. resp</a></li>
-<li><a href="#wires">4.2. wires</a></li>
-<li><a href="#depos">4.3. depos</a></li>
-<li><a href="#frames">4.4. frames</a></li>
-<li><a href="#images">4.5. images</a></li>
+<li><a href="#resp">5.1. resp</a></li>
+<li><a href="#wires">5.2. wires</a></li>
+<li><a href="#depos">5.3. depos</a></li>
+<li><a href="#frames">5.4. frames</a></li>
+<li><a href="#images">5.5. images</a></li>
+</ul>
+</li>
+<li><a href="#plotting">6. Plotting</a>
+<ul>
+<li><a href="#imgfmt">6.1. Image formats</a></li>
+<li><a href="#cmap">6.2. Color maps</a></li>
+<li><a href="#realVfake">6.3. Real vs Fake</a></li>
 </ul>
 </li>
 </ul>
@@ -324,7 +328,7 @@ management system</b>, translate the contents of the example <a href="dot.envrc"
 A one time setup of direnv:
 </p>
 
-<pre class="example" id="org5526221">
+<pre class="example" id="org65fa5ca">
 $ cd toyzero
 $ cp dot.envrc .envrc
 $ emacs .envrc  # edit to taste
@@ -342,7 +346,7 @@ required.  See <a href="https://wirecell.bnl.gov/">https://wirecell.bnl.gov/</a>
 Check if WCT is available with these commands:
 </p>
 
-<pre class="example" id="org649f186">
+<pre class="example" id="org785d45a">
 $ wire-cell --help
 $ wcsonnet wirecell.jsonnet
 $ echo $WIRECELL_PATH
@@ -364,7 +368,7 @@ The stand-alone <code>wire-cell-python</code> package, the <code>snakemake</code
 various other Python 3 packages are required.  
 </p>
 
-<pre class="example" id="org74946d6">
+<pre class="example" id="orgf712369">
 $ cd toyzero
 $ pip install -r requirements.txt
 </pre>
@@ -373,33 +377,11 @@ $ pip install -r requirements.txt
 Some checks:
 </p>
 
-<pre class="example" id="orgda716d3">
+<pre class="example" id="org15592bb">
 $ wirecell-&lt;TAB&gt;
 $ wirecell-util --help
 $ snakemake --help
 </pre>
-</div>
-
-<div id="outline-container-hack" class="outline-4">
-<h4 id="hack"><span class="section-number-4">2.3.1</span> Hacking</h4>
-<div class="outline-text-4" id="text-hack">
-<p>
-The above installs WCT python for use.  To develop that code without
-having to go through many GitHub pushes we can leverage the <code>direnv</code>
-environment for <code>toyzero</code> use:
-</p>
-
-<pre class="example" id="orgfe3de1e">
-$ git clone git@github.com:wirecell/wire-cell-python.git
-$ cd wire-cell-python/
-$ pip install -U -e .
-</pre>
-
-<p>
-You can now hack on wire-cell-python and your changes are immediately
-made available.
-</p>
-</div>
 </div>
 </div>
 </div>
@@ -418,17 +400,55 @@ This can take ten minutes or so depending on how fast your CPU is.
 </div>
 </div>
 
+<div id="outline-container-hack" class="outline-2">
+<h2 id="hack"><span class="section-number-2">4</span> Hacking</h2>
+<div class="outline-text-2" id="text-hack">
+<p>
+Much of the <code>toyzero</code> package relies on the <code>wire-cell-python</code> package.
+You can develop that code locally (instead of push to GitHub +
+reinstall).  We can leverage the <code>direnv</code> environment for <code>toyzero</code> to do
+so like:
+</p>
+
+<pre class="example" id="org75f826d">
+$ git clone git@github.com:wirecell/wire-cell-python.git
+$ cd wire-cell-python/
+$ pip install -U -e .
+</pre>
+
+<p>
+You can now hack on wire-cell-python and your changes are immediately
+made available.  If the changes are generally useful, please consider
+making a PR!
+</p>
+</div>
+</div>
+
+
 <div id="outline-container-details" class="outline-2">
-<h2 id="details"><span class="section-number-2">4</span> Details</h2>
+<h2 id="details"><span class="section-number-2">5</span> Details</h2>
 <div class="outline-text-2" id="text-details">
 <p>
 Looking into the <a href="Snakefile">Snakefile</a> one will see the <code>all</code> target aggregates a
-number of <code>all_*</code> sub-targets.
+number of <code>all_*</code> sub-targets.  You may run each ordered, piece-wise
+manner:
+</p>
+
+<pre class="example" id="orgcc91bc2">
+$ snakemake -jall all_resp
+$ snakemake -jall all_wires
+$ snakemake -jall all_depos
+$ snakemake -jall all_frames
+$ snakemake -jall all_images
+</pre>
+
+<p>
+Each of these steps are described more in the next subsections.
 </p>
 </div>
 
 <div id="outline-container-resp" class="outline-3">
-<h3 id="resp"><span class="section-number-3">4.1</span> resp</h3>
+<h3 id="resp"><span class="section-number-3">5.1</span> resp</h3>
 <div class="outline-text-3" id="text-resp">
 <p>
 The <code>all_resp</code> target gets 2D WCT "response file" and derive from it
@@ -444,13 +464,13 @@ transverse pitch direction (Y-axis) when it is at the moment of time
 </p>
 
 
-<div id="org9fa5f62" class="figure">
+<div id="org79271fc" class="figure">
 <p><img src="plots/fake-resps-diagnostic.png" alt="fake-resps-diagnostic.png" width="90%" />
 </p>
 </div>
 
 
-<div id="org2dc55b2" class="figure">
+<div id="org53fab91" class="figure">
 <p><img src="plots/real-resps-diagnostic.png" alt="real-resps-diagnostic.png" width="90%" />
 </p>
 </div>
@@ -458,7 +478,7 @@ transverse pitch direction (Y-axis) when it is at the moment of time
 </div>
 
 <div id="outline-container-wires" class="outline-3">
-<h3 id="wires"><span class="section-number-3">4.2</span> wires</h3>
+<h3 id="wires"><span class="section-number-3">5.2</span> wires</h3>
 <div class="outline-text-3" id="text-wires">
 <p>
 The <code>all_wires</code> target gets WCT "wires file" and makes a multipage PDF
@@ -471,14 +491,14 @@ wire segments may be instructive.
 </div>
 
 <div id="outline-container-depos" class="outline-3">
-<h3 id="depos"><span class="section-number-3">4.3</span> depos</h3>
+<h3 id="depos"><span class="section-number-3">5.3</span> depos</h3>
 <div class="outline-text-3" id="text-depos">
 <p>
 The <code>all_depos</code> target generates sets of ionization point depositions
 for input to the WCT simulation.  It produces a file:
 </p>
 
-<pre class="example" id="org6a325b6">
+<pre class="example" id="orgf02ad78">
 data/{wire}-depos.npz
 </pre>
 
@@ -487,7 +507,7 @@ Where <code>{wire}</code> names the wires file.  The file is in Numpy format wit
 arrays named like:
 </p>
 
-<pre class="example" id="orgb83936e">
+<pre class="example" id="org177a754">
 depo_data_&lt;N&gt;
 depo_info_&lt;N&gt;
 </pre>
@@ -519,7 +539,7 @@ showing distribution of depo times and the depo locations.
 </p>
 
 
-<div id="orgfc8172e" class="figure">
+<div id="org9d9e6a7" class="figure">
 <p><img src="plots/depos-diagnostic.png" alt="depos-diagnostic.png" width="90%" />
 </p>
 </div>
@@ -527,81 +547,19 @@ showing distribution of depo times and the depo locations.
 </div>
 
 <div id="outline-container-frames" class="outline-3">
-<h3 id="frames"><span class="section-number-3">4.4</span> frames</h3>
+<h3 id="frames"><span class="section-number-3">5.4</span> frames</h3>
 <div class="outline-text-3" id="text-frames">
 <p>
 The <code>all_frames</code> target generates "frame" data from depos by running the
 Wire-Cell simulation.  The "frame" file format is described elsewhere.
 For here, we treat it as a temporary.
 </p>
-
-<p>
-Diagnostic plots for each APA of the first event are made in PDF and
-PNG.  Frame data is both very sparse and also very high resolution and
-this causes substantial problems for visualization.  Default
-visualization often shows <b>misleading artifacts</b>.
-</p>
-
-<dl class="org-dl">
-<dt>png</dt><dd>at default DPI for <code>matplotlib</code> expect loss of visual data due
-to PNG resolution lower than data and due to zero or close to zero
-falling into the background color.  Increasing DPI can help at the
-cost of larger files.</dd>
-
-<dt>pdf</dt><dd>most likely to correctly represent that data.  However <b>beware
-of antialiasing</b> that many PDF viewers apply to make images and text
-look "prettier".  This will also obscure features and add artifacts.</dd>
-</dl>
-
-<p>
-As an example, compare the two images below.  The first is a high-DPI
-PNG rendering (by NETPBM) from the original PDF made by <code>matplotlib</code> and
-the second is a PNG directly from <code>matplotlib</code> at its default DPI.
-</p>
-
-
-<div id="orga54d596" class="figure">
-<p><img src="plots/hidpi/frames-fake-apa0.png" alt="frames-fake-apa0.png" width="90%" />
-</p>
-</div>
-
-<p>
-to the same data as PNG at default DPI from matplotlib:
-</p>
-
-
-<div id="org48b9e79" class="figure">
-<p><img src="plots/frames-fake-apa0.png" alt="frames-fake-apa0.png" width="90%" />
-</p>
-</div>
-
-
-<p>
-Some tips to deal with resolution issues
-</p>
-
-<ul class="org-ul">
-<li>A PDF hint, if you want more zoom from your <code>evince</code>:</li>
-</ul>
-<pre class="example" id="org7b4df19">
-❯ gsettings set org.gnome.Evince page-cache-size 2014
-</pre>
-
-<ul class="org-ul">
-<li>Try <a href="https://matplotlib.org/stable/gallery/color/colormap_reference.html">different color maps</a>.  If the data has a large enough dynamic
-range, consider a diverging color map with a white center (eg
-"seismic").  If this places too many low values into the center
-color bin then use a continuous color map which changes color at the
-center and then use a masked array (<code>numpy.ma.array</code>) with the central
-value (eg 0) masked (eg or "coolwarm" or "Spectral" - see examples
-below).  One example shown below.  Avoid all "rainbow" maps with a
-green swath in the center and any ending in white such as "terrain".</li>
-</ul>
 </div>
 </div>
+
 
 <div id="outline-container-images" class="outline-3">
-<h3 id="images"><span class="section-number-3">4.5</span> images</h3>
+<h3 id="images"><span class="section-number-3">5.5</span> images</h3>
 <div class="outline-text-3" id="text-images">
 <p>
 The <code>all_images</code> target processes each "frame" data to produce one 2D
@@ -610,7 +568,7 @@ assemblies.  The file name and name of the single array in the file
 match.  For example:
 </p>
 
-<pre class="example" id="org64c5132">
+<pre class="example" id="org80b938c">
 ❯ wirecell-util npzls data/images/real/protodune-orig-0-1-W.npz 
 protodune-orig-0-1-W (960, 6000)
 </pre>
@@ -622,12 +580,97 @@ and is from index=0 from the "real" data, APA ID 1 and plane "W"
 induction planes and each will have 800 channels and the
 contemporaneous 6000 ticks.
 </p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-plotting" class="outline-2">
+<h2 id="plotting"><span class="section-number-2">6</span> Plotting</h2>
+<div class="outline-text-2" id="text-plotting">
+<p>
+Diagnostic plots for each APA of the first event are made in PDF, PNG
+and SVG with different color maps to explore how best to display the
+information.  These image pose problems as they are relatively high
+resolution and high dynamic range but are also sparse.  As such we
+must take care that some visualization will produce very <b>misleading
+artifacts</b>.
+</p>
+</div>
+
+<div id="outline-container-imgfmt" class="outline-3">
+<h3 id="imgfmt"><span class="section-number-3">6.1</span> Image formats</h3>
+<div class="outline-text-3" id="text-imgfmt">
+<dl class="org-dl">
+<dt>png</dt><dd>At <code>matplotlib</code> default DPI expect loss of visual data due to
+the resolution being low and potentially due to low values falling
+into the "center" color of the color map.  Increasing DPI can help
+at the cost of larger files.  Exploring different color maps follows.</dd>
+
+<dt>pdf</dt><dd>Likely best format to use for accuracy.  However <b>beware of
+antialiasing</b> that many PDF viewers apply to make images and text
+look "prettier".  It can obscure features and add artifacts.</dd>
+
+<dt>svg</dt><dd>Much of the benefits of PDF but can be inlined in HTML.</dd>
+</dl>
 
 <p>
-The array may be visualized with many options with this command:
+As an example of DPI problems, compare the two images below.  The
+first is a high-DPI PNG rendering (by NETPBM) from the original PDF
+made by <code>matplotlib</code> and the second is a PNG directly from <code>matplotlib</code> at
+its default DPI.
 </p>
 
-<pre class="example" id="orgde58b7b">
+
+<div id="orgcda2219" class="figure">
+<p><img src="plots/hidpi/frames-fake-apa0.png" alt="frames-fake-apa0.png" width="90%" />
+</p>
+</div>
+
+<p>
+to the same data as PNG at default DPI from matplotlib:
+</p>
+
+
+<div id="org2987d2f" class="figure">
+<p><img src="plots/frames-fake-apa0.png" alt="frames-fake-apa0.png" width="90%" />
+</p>
+</div>
+
+
+<p>
+If you need more zoom from your <code>evince</code> PDF viewer try
+</p>
+<pre class="example" id="orga9fef6d">
+❯ gsettings set org.gnome.Evince page-cache-size 2014
+</pre>
+</div>
+</div>
+
+<div id="outline-container-cmap" class="outline-3">
+<h3 id="cmap"><span class="section-number-3">6.2</span> Color maps</h3>
+<div class="outline-text-3" id="text-cmap">
+<p>
+Selecting a good <a href="https://matplotlib.org/stable/gallery/color/colormap_reference.html">color map</a> can have a big impact.  Some guidance:
+</p>
+
+<ul class="org-ul">
+<li>For bipolar data of large dynamic range consider using "seismic" and
+symmetric ranges (<code>vmin/vmax</code>).</li>
+
+<li>For bipolar data with low dynamic range, select a symmetric color
+map such as "coolwarm" and use a masked array to remove the 0 value.</li>
+
+<li>Avoid "rainbow" color maps with a large central region of a nearly
+common color.</li>
+</ul>
+
+<p>
+The <code>wire-cell-python</code> package provides a command to easily visualize a
+2D Numpy image array in a file with many plotting parameters exposed
+as command line options:
+</p>
+
+<pre class="example" id="org047dedc">
 ❯ wirecell-util npz-to-img --help
 Usage: wirecell-util npz-to-img [OPTIONS] NPZFILE
 
@@ -647,9 +690,9 @@ Options:
   --help               Show this message and exit.
 
 ❯ wirecell-util npz-to-img --cmap Spectral \
-   --zoom 400:600,700:1300 --mask 0 --vmin -3 --vmax 3 \
+   --zoom 300:500,0:1000 --mask 0 --vmin -50 --vmax 50 \
    --dpi 600 --baseline=median \
-   -o junk.png data/images/real/protodune-orig-0-5-U.npz
+   -o junk.png data/images/real/protodune-orig-0-2-U.npz
 </pre>
 
 <p>
@@ -658,45 +701,75 @@ masked to white regardless of color map.
 </p>
 
 <ul class="org-ul">
-<li>"coolwarm"</li>
+<li>"coolwarm" (real)</li>
 </ul>
 
 
-<div id="org334a7ae" class="figure">
-<p><img src="plots/images/real/coolwarm/protodune-orig-0-5-U.png" alt="protodune-orig-0-5-U.png" width="90%" />
+<div id="orgdb4cfdd" class="figure">
+<p><img src="plots/images/real/coolwarm/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
 </p>
 </div>
 
 <ul class="org-ul">
-<li>"Spectral"</li>
+<li>"seismic" (real)</li>
 </ul>
 
 
-<div id="org48d2b53" class="figure">
-<p><img src="plots/images/real/Spectral/protodune-orig-0-5-U.png" alt="protodune-orig-0-5-U.png" width="90%" />
+<div id="orgb266043" class="figure">
+<p><img src="plots/images/real/seismic/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
 </p>
 </div>
 
-
 <ul class="org-ul">
-<li>"Spectral" as SVG</li>
+<li>"Spectral" (real)</li>
 </ul>
 
 
-<div id="org189558f" class="figure">
-<p><object type="image/svg+xml" data="plots/images/real/Spectral/protodune-orig-0-5-U.svg" class="org-svg" width="90%">
+<div id="org1ca91d6" class="figure">
+<p><img src="plots/images/real/Spectral/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
+</p>
+</div>
+
+<ul class="org-ul">
+<li>"viridis" (real)</li>
+</ul>
+
+
+<div id="org0fba657" class="figure">
+<p><img src="plots/images/real/viridis/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-realVfake" class="outline-3">
+<h3 id="realVfake"><span class="section-number-3">6.3</span> Real vs Fake</h3>
+<div class="outline-text-3" id="text-realVfake">
+<p>
+We select one event region (U plane) to show "real" 2D vs "fake" q1D,
+both as SVG.  In particular, not how there is "long range induction"
+effects in 2D which are lacking in q1D.
+</p>
+
+<ul class="org-ul">
+<li>Real:</li>
+</ul>
+
+
+<div id="org721521a" class="figure">
+<p><object type="image/svg+xml" data="plots/images/real/seismic/protodune-orig-0-2-U.svg" class="org-svg" width="90%">
 Sorry, your browser does not support SVG.</object>
 </p>
 </div>
 
 
 <ul class="org-ul">
-<li>As above but for the "fake" q1d response</li>
+<li>Fake:</li>
 </ul>
 
 
-<div id="org780f8cd" class="figure">
-<p><object type="image/svg+xml" data="plots/images/fake/Spectral/protodune-orig-0-5-U.svg" class="org-svg" width="90%">
+<div id="orgb3a8883" class="figure">
+<p><object type="image/svg+xml" data="plots/images/fake/seismic/protodune-orig-0-2-U.svg" class="org-svg" width="90%">
 Sorry, your browser does not support SVG.</object>
 </p>
 </div>
@@ -706,7 +779,7 @@ Sorry, your browser does not support SVG.</object>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: BV</p>
-<p class="date">Created: 2021-07-07 Wed 16:30</p>
+<p class="date">Created: 2021-07-07 Wed 18:01</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

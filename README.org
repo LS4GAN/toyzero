@@ -1,6 +1,7 @@
 #+title: LS4GAN's Toy Zero
 #+EXPORT_FILE_NAME: index.html
 #+setupfile: https://ls4gan.github.io/other/setup-page.org
+#+options: toc:t
 
 Bare first steps toward LS4GAN.  *still work in progress*
 
@@ -57,6 +58,9 @@ of Wire-Cell Toolkit and various Python packages.  We will assume
 management system*, translate the contents of the example [[file:dot.envrc][dot.envrc]].
 
 ** Environment
+:PROPERTIES:
+:CUSTOM_ID: env
+:END:
 
 A one time setup of direnv:
 
@@ -68,6 +72,9 @@ A one time setup of direnv:
 #+end_example
 
 ** Check Wire-Cell Toolkit
+:PROPERTIES:
+:CUSTOM_ID: checks
+:END:
 
 The Wire-Cell Toolkit program ~wire-cell~ and its libraries are
 required.  See https://wirecell.bnl.gov/ for installation information.
@@ -84,6 +91,9 @@ by WCT.  This ~toyzero~ package provides additional configuration in
 [[file:cfg/][./cfg]] which will found automatically.
 
 ** Python
+:PROPERTIES:
+:CUSTOM_ID: python
+:END:
 
 The stand-alone ~wire-cell-python~ package, the ~snakemake~ program and
 various other Python 3 packages are required.  
@@ -102,6 +112,9 @@ Some checks:
 #+end_example
 
 *** Hacking
+:PROPERTIES:
+:CUSTOM_ID: hack
+:END:
 
 The above installs WCT python for use.  To develop that code without
 having to go through many GitHub pushes we can leverage the ~direnv~
@@ -140,6 +153,10 @@ Looking into the [[file:Snakefile][Snakefile]] one will see the ~all~ target agg
 number of ~all_*~ sub-targets.
 
 ** resp
+:PROPERTIES:
+:CUSTOM_ID: resp
+:END:
+
 
 The ~all_resp~ target gets 2D WCT "response file" and derive from it
 quasi-1D response file and make some diagnostic plots for each.
@@ -157,6 +174,9 @@ transverse pitch direction (Y-axis) when it is at the moment of time
 [[file:plots/real-resps-diagnostic.png]]
 
 ** wires
+:PROPERTIES:
+:CUSTOM_ID: wires
+:END:
 
 The ~all_wires~ target gets WCT "wires file" and makes a multipage PDF
 file with diagnostic plots at [[file:plots/wires-diagnostic.pdf]].  Most
@@ -165,6 +185,9 @@ exhaustively cover all six protodune APAs.  However, the pages showing
 wire segments may be instructive.
 
 ** depos
+:PROPERTIES:
+:CUSTOM_ID: depos
+:END:
 
 The ~all_depos~ target generates sets of ionization point depositions
 for input to the WCT simulation.  It produces a file:
@@ -203,6 +226,9 @@ showing distribution of depo times and the depo locations.
 [[file:plots/depos-diagnostic.png]]
 
 ** frames
+:PROPERTIES:
+:CUSTOM_ID: frames
+:END:
 
 The ~all_frames~ target generates "frame" data from depos by running the
 Wire-Cell simulation.  The "frame" file format is described elsewhere.
@@ -252,6 +278,10 @@ Some tips to deal with resolution issues
   green swath in the center and any ending in white such as "terrain".
 
 ** images
+:PROPERTIES:
+:CUSTOM_ID: images
+:END:
+
 
 The ~all_images~ target processes each "frame" data to produce one 2D
 image for each of three wire planes of each of six anode plane

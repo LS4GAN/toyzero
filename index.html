@@ -1,0 +1,560 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2021-07-07 Wed 12:32 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LS4GAN's Toy Zero</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="BV" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="https://ls4gan.github.io/other/darksun/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="https://ls4gan.github.io/other/darksun/css/darksun.css"/>
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">LS4GAN's Toy Zero</h1>
+<p>
+Bare first steps toward LS4GAN.  <b>still work in progress</b>
+</p>
+
+<div id="outline-container-goals" class="outline-2">
+<h2 id="goals"><span class="section-number-2">1</span> Goals</h2>
+<div class="outline-text-2" id="text-goals">
+<p>
+After some pre-requirements are met, this package automates the
+preparation for and running of various Wire-Cell Toolkit jobs in order
+to produce some initial datasets for initial exploration of the LS4GAN
+concept.
+</p>
+
+<p>
+The final results are in the form raw ADC waveform arrays in
+per-channel rows of sampled columns.  Each array spans one of three
+wire planes from one of six anode plane assemblies (APA) of the
+ProtoDUNE-SP detector.
+</p>
+
+<p>
+There are two data sets <b>real</b> and <b>fake</b>.  The <b>real</b> uses the full, best
+known 2D response model and the <b>fake</b> uses an intentionally wrong
+quasi-1D model which is derived from the 2D model by zeroing all
+responses except those for the central wire.  (Note that this quasi-1D
+model is not the same of the even less accurate 1D model as it
+includes the variation within the central wire region.)
+</p>
+
+<p>
+For this initial development we accept a number of simplifying
+"cheats" which we will rectify as we gain experience.  They are at
+least the following:
+</p>
+
+<ul class="org-ul">
+<li>Use of simulation for both "real" and "fake".  Eventually, "real"
+will be detector data and "fake" will from our best available
+simulation (currently 2D Wire Cell).  We may use paired data for
+evaluating the technique in this stage but can not rely on it going
+forward.</li>
+
+<li>Our initial <i>data tier</i> is that of <b>ADC waveforms</b> and those from only
+ionization electrons from <b>ideal tracks</b> and in particular <b>excluding
+noise</b> effects.  We eventually will use realistic track simulation
+(Geant4) and will include noise.  When adding noise we will switch
+to a <i>data tier</i> of <b>reconstructed signal waveforms</b>.  To produce them
+we will include <b>noise models</b> in the simulation and apply <b>noise
+filtering</b> to both the fake simulation and the real detector data
+just prior to applying <b>signal processing</b>.</li>
+</ul>
+</div>
+</div>
+
+
+<div id="outline-container-prepare" class="outline-2">
+<h2 id="prepare"><span class="section-number-2">2</span> Prepare</h2>
+<div class="outline-text-2" id="text-prepare">
+<p>
+This package requires a few user environment settings to support use
+of Wire-Cell Toolkit and various Python packages.  We will assume
+<a href="https://direnv.net/">direnv</a> is used to manage the environment.  To use <b>another environment
+management system</b>, translate the contents of the example <a href="dot.envrc">dot.envrc</a>.
+</p>
+</div>
+
+<div id="outline-container-orgab05390" class="outline-3">
+<h3 id="orgab05390"><span class="section-number-3">2.1</span> Environment</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+A one time setup of direnv:
+</p>
+
+<pre class="example" id="orge451348">
+$ cd toyzero
+$ cp dot.envrc .envrc
+$ emacs .envrc  # edit to taste
+$ direnv allow
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org0191ef7" class="outline-3">
+<h3 id="org0191ef7"><span class="section-number-3">2.2</span> Check Wire-Cell Toolkit</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+The Wire-Cell Toolkit program <code>wire-cell</code> and its libraries are
+required.  See <a href="https://wirecell.bnl.gov/">https://wirecell.bnl.gov/</a> for installation information.
+Check if WCT is available with these commands:
+</p>
+
+<pre class="example" id="org61d113d">
+$ wire-cell --help
+$ wcsonnet wirecell.jsonnet
+$ echo $WIRECELL_PATH
+</pre>
+
+<p>
+The <code>WIRECELL_PATH</code> should include at least the <code>cfg/</code> directory provided
+by WCT.  This <code>toyzero</code> package provides additional configuration in
+<a href="cfg/">./cfg</a> which will found automatically.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org631d149" class="outline-3">
+<h3 id="org631d149"><span class="section-number-3">2.3</span> Python</h3>
+<div class="outline-text-3" id="text-2-3">
+<p>
+The stand-alone <code>wire-cell-python</code> package, the <code>snakemake</code> program and
+various other Python 3 packages are required.  
+</p>
+
+<pre class="example" id="orgaf9bde9">
+$ cd toyzero
+$ pip install -r requirements.txt
+</pre>
+
+<p>
+Some checks:
+</p>
+
+<pre class="example" id="org789d081">
+$ wirecell-&lt;TAB&gt;
+$ wirecell-util --help
+$ snakemake --help
+</pre>
+</div>
+
+<div id="outline-container-orgccbdcba" class="outline-4">
+<h4 id="orgccbdcba"><span class="section-number-4">2.3.1</span> Hacking</h4>
+<div class="outline-text-4" id="text-2-3-1">
+<p>
+The above installs WCT python for use.  To develop that code without
+having to go through many GitHub pushes we can leverage the <code>direnv</code>
+environment for <code>toyzero</code> use:
+</p>
+
+<pre class="example" id="org2c174ba">
+$ git clone git@github.com:wirecell/wire-cell-python.git
+$ cd wire-cell-python/
+$ pip install -U -e .
+</pre>
+
+<p>
+You can now hack on wire-cell-python and your changes are immediately
+made available.
+</p>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-usage" class="outline-2">
+<h2 id="usage"><span class="section-number-2">3</span> Usage</h2>
+<div class="outline-text-2" id="text-usage">
+<p>
+Exercising toyzero will automatically download various files from
+Wire-Cell GitHub and run various programs.  
+</p>
+
+<p>
+This can take ten minutes or so depending on how fast your CPU is.
+</p>
+</div>
+</div>
+
+<div id="outline-container-details" class="outline-2">
+<h2 id="details"><span class="section-number-2">4</span> Details</h2>
+<div class="outline-text-2" id="text-details">
+<p>
+Looking into the <a href="Snakefile">Snakefile</a> one will see the <code>all</code> target aggregates a
+number of <code>all_*</code> sub-targets.
+</p>
+</div>
+
+<div id="outline-container-org812b63b" class="outline-3">
+<h3 id="org812b63b"><span class="section-number-3">4.1</span> resp</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+The <code>all_resp</code> target gets 2D WCT "response file" and derive from it
+quasi-1D response file and make some diagnostic plots for each.
+</p>
+
+<p>
+Visualization of q1D and 2D responses are generated and shown below.
+First "fake" q1D and "real" 2D.  These show the instantaneous induced
+current (Z-axis) on a "wire of interest" for an that started at the
+transverse pitch direction (Y-axis) when it is at the moment of time
+(X-axis).  Note, the current is in log10 units.
+</p>
+
+
+<div id="orgaf65d0f" class="figure">
+<p><img src="plots/fake-resps-diagnostic.png" alt="fake-resps-diagnostic.png" width="90%" />
+</p>
+</div>
+
+
+<div id="org1b3d753" class="figure">
+<p><img src="plots/real-resps-diagnostic.png" alt="real-resps-diagnostic.png" width="90%" />
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org2a3f61e" class="outline-3">
+<h3 id="org2a3f61e"><span class="section-number-3">4.2</span> wires</h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+The <code>all_wires</code> target gets WCT "wires file" and makes a multipage PDF
+file with diagnostic plots at <a href="plots/wires-diagnostic.pdf">plots/wires-diagnostic.pdf</a>.  Most
+of these pages may be too esoteric for most users and they
+exhaustively cover all six protodune APAs.  However, the pages showing
+wire segments may be instructive.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org4e15c1d" class="outline-3">
+<h3 id="org4e15c1d"><span class="section-number-3">4.3</span> depos</h3>
+<div class="outline-text-3" id="text-4-3">
+<p>
+The <code>all_depos</code> target generates sets of ionization point depositions
+for input to the WCT simulation.  It produces a file:
+</p>
+
+<pre class="example" id="org87bb08c">
+data/{wire}-depos.npz
+</pre>
+
+<p>
+Where <code>{wire}</code> names the wires file.  The file is in Numpy format with
+arrays named like:
+</p>
+
+<pre class="example" id="org47fa36b">
+depo_data_&lt;N&gt;
+depo_info_&lt;N&gt;
+</pre>
+
+<p>
+The <code>&lt;N&gt;</code> counts a set of depos which are generated together (eg, an
+"event").  The <code>data</code> arrays are 2D of shape <code>(7, n)</code> where <code>n</code> is the number
+of depositions, O(1M).  Each depo is a 7-tuple with elements:
+</p>
+
+<ol class="org-ol">
+<li>time</li>
+<li>number of electrons</li>
+<li>X position</li>
+<li>Y position</li>
+<li>Z position</li>
+<li>longitudinal extent (zero here)</li>
+<li>transverse extent (zero here)</li>
+</ol>
+
+<p>
+Additional <code>info</code> arrays will be found in the file and can be
+ignored here.
+</p>
+
+<p>
+A simple summary diagnostic plot is generated showing distribution of
+depo times and the depo locations.
+</p>
+
+
+<div id="orgc5ac48d" class="figure">
+<p><img src="plots/depos-diagnostic.png" alt="depos-diagnostic.png" width="90%" />
+</p>
+</div>
+</div>
+</div>
+
+
+
+<div id="outline-container-org667d5ff" class="outline-3">
+<h3 id="org667d5ff"><span class="section-number-3">4.4</span> frames</h3>
+<div class="outline-text-3" id="text-4-4">
+<p>
+The <code>all_frames</code> target generates "frame" data from depos by running the
+Wire-Cell simulation.  The "frame" file format is described elsewhere.
+For here, we treat it as a temporary.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org6f53b78" class="outline-3">
+<h3 id="org6f53b78"><span class="section-number-3">4.5</span> images</h3>
+<div class="outline-text-3" id="text-4-5">
+<p>
+The <code>all_images</code> target processes each "frame" data to produce one 2D
+image for each of three wire planes of each of six anode plane
+assemblies.  The file name and name of the single array in the file
+match.  For example:
+</p>
+
+<pre class="example" id="org57a900c">
+❯ wirecell-util npzls data/images/real/protodune-orig-0-1-W.npz 
+protodune-orig-0-1-W (960, 6000)
+</pre>
+
+<p>
+This file holds one array of 960 channels and 6000 sample time "ticks"
+and is from index=0 from the "real" data, APA ID 1 and plane "W"
+(collection plane aka plane 2 counting from 0).  "U" and "V" are
+induction planes and each will have 800 channels and the
+contemporaneous 6000 ticks.
+</p>
+
+<p>
+The array may be simply, if not beautifully, visualized with:
+</p>
+
+<pre class="example" id="org9e18940">
+❯ wirecell-util npz-to-img -o protodune-orig-0-1-W.png \
+  data/images/real/protodune-orig-0-1-W.npz
+</pre>
+
+
+<div id="org0101b74" class="figure">
+<p><img src="protodune-orig-0-1-W.png" alt="protodune-orig-0-1-W.png" />
+</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: BV</p>
+<p class="date">Created: 2021-07-07 Wed 12:32</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>

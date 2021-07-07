@@ -1,4 +1,6 @@
 #+title: LS4GAN's Toy Zero
+#+EXPORT_FILE_NAME: index.html
+#+setupfile: https://ls4gan.github.io/other/setup-page.org
 
 Bare first steps toward LS4GAN.  *still work in progress*
 
@@ -142,9 +144,25 @@ number of ~all_*~ sub-targets.
 The ~all_resp~ target gets 2D WCT "response file" and derive from it
 quasi-1D response file and make some diagnostic plots for each.
 
+Visualization of q1D and 2D responses are generated and shown below.
+First "fake" q1D and "real" 2D.  These show the instantaneous induced
+current (Z-axis) on a "wire of interest" for an that started at the
+transverse pitch direction (Y-axis) when it is at the moment of time
+(X-axis).  Note, the current is in log10 units.
+
+#+ATTR_HTML: :width 90%
+[[file:plots/fake-resps-diagnostic.png]]
+
+#+ATTR_HTML: :width 90%
+[[file:plots/real-resps-diagnostic.png]]
+
 ** wires
 
-The ~all_wires~ target gets WCT "wires file" and makes a diagnostic plot.
+The ~all_wires~ target gets WCT "wires file" and makes a multipage PDF
+file with diagnostic plots at [[file:plots/wires-diagnostic.pdf]].  Most
+of these pages may be too esoteric for most users and they
+exhaustively cover all six protodune APAs.  However, the pages showing
+wire segments may be instructive.
 
 ** depos
 
@@ -177,6 +195,14 @@ of depositions, O(1M).  Each depo is a 7-tuple with elements:
 
 Additional ~info~ arrays will be found in the file and can be
 ignored here.
+
+A simple summary diagnostic plot is generated showing distribution of
+depo times and the depo locations.
+
+#+ATTR_HTML: :width 90%
+[[file:plots/depos-diagnostic.png]]
+
+
 
 ** frames
 

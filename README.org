@@ -3,7 +3,7 @@
 #+setupfile: https://ls4gan.github.io/other/setup-page.org
 #+options: toc:t
 
-Bare first steps toward LS4GAN.  *still work in progress*
+The toyzero package provides first steps toward [[https://ls4gan.github.io/][LS4GAN]].
 
 * Goals
 :PROPERTIES:
@@ -15,21 +15,22 @@ preparation for and running of various Wire-Cell Toolkit jobs in order
 to produce some initial datasets for initial exploration of the LS4GAN
 concept.
 
-The final results are in the form raw ADC waveform arrays in
-per-channel rows of sampled columns.  Each array spans one of three
-wire planes from one of six anode plane assemblies (APA) of the
-ProtoDUNE-SP detector.
+The final results are in the form raw ADC (Z-axis) waveform arrays in
+per-channel rows (Y-axis) of time-sampled columns (X-axis).  Each
+array spans one of three wire planes from one of six anode plane
+assemblies (APA) of the ProtoDUNE-SP detector.
 
-There are two data sets *real* and *fake*.  The *real* uses the full, best
-known 2D response model and the *fake* uses an intentionally wrong
-quasi-1D model which is derived from the 2D model by zeroing all
-responses except those for the central wire.  (Note that this quasi-1D
-model is not the same of the even less accurate 1D model as it
-includes the variation within the central wire region.)
+There are two domains named *real* and *fake* (both simulated in toyzero).
+The *real* domain uses the full, best known 2D response model. The *fake*
+domain uses an intentionally "more wrong" quasi-1D model which is
+derived from the 2D model by zeroing all responses except those
+covering the central wire of interest.  (Note that this quasi-1D model
+is not the same of the "yet more wronger" 1D model as q1D includes the
+variation within the central wire region.)
 
 For this initial development we accept a number of simplifying
-"cheats" which we will rectify as we gain experience.  They are at
-least the following:
+"cheats" which we will rectify as we gain experience and develop the
+next phase.  They are at least the following:
 
 - Use of simulation for both "real" and "fake".  Eventually, "real"
   will be detector data and "fake" will from our best available
@@ -44,8 +45,11 @@ least the following:
   to a /data tier/ of *reconstructed signal waveforms*.  To produce them
   we will include *noise models* in the simulation and apply *noise
   filtering* to both the fake simulation and the real detector data
-  just prior to applying *signal processing*.
-
+  just prior to applying *signal processing*.  We may stop there or go
+  one step further and apply Wire-Cell *3D tomographic imaging* to form
+  our data tier.  Each step brings "real" and "fake" closer and thus
+  allows LS4GAN to expend its deep neural nodes to find ever more
+  subtle differences.
 
 * Prepare
 :PROPERTIES:
@@ -111,41 +115,31 @@ Some checks:
   $ snakemake --help
 #+end_example
 
+See also section [[Hacking]] for info on providing a developer version of
+~wire-cell-python~ code.
+
 * Usage
 :PROPERTIES:
 :CUSTOM_ID: usage
 :END:
 
 Exercising toyzero will automatically download various files from
-Wire-Cell GitHub and run various programs.  
-
-#+begin_export 
-  $ snakemake -jall all
-  $ tree data plots
-#+end_export
-
-This can take ten minutes or so depending on how fast your CPU is.
-
-* Hacking
-:PROPERTIES:
-:CUSTOM_ID: hack
-:END:
-
-Much of the ~toyzero~ package relies on the ~wire-cell-python~ package.
-You can develop that code locally (instead of push to GitHub +
-reinstall).  We can leverage the ~direnv~ environment for ~toyzero~ to do
-so like:
+Wire-Cell GitHub and run various programs.  In principle, the user
+need run only:
 
 #+begin_example
-  $ git clone git@github.com:wirecell/wire-cell-python.git
-  $ cd wire-cell-python/
-  $ pip install -U -e .
+  $ snakemake -jall all
 #+end_example
 
-You can now hack on wire-cell-python and your changes are immediately
-made available.  If the changes are generally useful, please consider
-making a PR!
- 
+This can take ten minutes or so depending on how fast your CPU is.
+To see what is produced:
+
+#+begin_example
+  $ tree data plots
+#+end_example
+
+More information on the use of ~snakemake~ in toyzero is below and in
+section [[Snakemake]].
 
 * Details
 :PROPERTIES:
@@ -172,17 +166,31 @@ Each of these steps are described more in the next subsections.
 :END:
 
 
-The ~all_resp~ target gets 2D WCT "response file" and derive from it
-quasi-1D response file and make some diagnostic plots for each.
+The ~all_resp~ target downloads 2D WCT "response file" and from it
+derives the quasi-1D response file.  then various diagnostic plots are
+made for each.
 
 Visualization of q1D and 2D responses are generated and shown below.
 First "fake" q1D and "real" 2D.  These show the instantaneous induced
-current (Z-axis) on a "wire of interest" for an that started at the
-transverse pitch direction (Y-axis) when it is at the moment of time
-(X-axis).  Note, the current is in log10 units.
+current (Z-axis) on a "wire of interest" over the drift path of an
+electron.  One row gives the response for an electron path that begins
+at the transverse (aka "pitch") location relative to the wire center
+and as given on the Y-axis.  Along that path/row, the Z/color value of
+each pixel gives the instantaneous current at a moment of time
+(X-axis).
+
+Note, the actual paths follow some trajectory in space but this
+information is not important for applying the response (though is very
+important for calculating the responses).  Also note, the current is
+in a "signed log10" unit with an arbitrary scaling in order to see
+both fine and gross features.
+
+- Fake/q1D field response for ProtoDUNE-SP
 
 #+ATTR_HTML: :width 90%
 [[file:plots/fake-resps-diagnostic.png]]
+
+- Real/2D field response for ProtoDUNE-SP
 
 #+ATTR_HTML: :width 90%
 [[file:plots/real-resps-diagnostic.png]]
@@ -192,11 +200,14 @@ transverse pitch direction (Y-axis) when it is at the moment of time
 :CUSTOM_ID: wires
 :END:
 
-The ~all_wires~ target gets WCT "wires file" and makes a multipage PDF
-file with diagnostic plots at [[file:plots/wires-diagnostic.pdf]].  Most
-of these pages may be too esoteric for most users and they
-exhaustively cover all six protodune APAs.  However, the pages showing
-wire segments may be instructive.
+The ~all_wires~ target downloads WCT "wires file" and makes a multipage
+PDF file with diagnostic plots at [[file:plots/wires-diagnostic.pdf]].
+
+Most of these pages may show content that is too esoteric for most
+users and they exhaustively cover all six protodune APAs.  However,
+the pages showing wire segments may be instructive.  For the most
+part, they can be ignored as "wires files" are typically well tested
+prior to making them available.
 
 ** depos
 :PROPERTIES:
@@ -207,20 +218,23 @@ The ~all_depos~ target generates sets of ionization point depositions
 for input to the WCT simulation.  It produces a file:
 
 #+begin_example
-  data/{wire}-depos.npz
+  data/depos/depos.npz
 #+end_example
 
-Where ~{wire}~ names the wires file.  The file is in Numpy format with
-arrays named like:
+The file is in Numpy format with three types of arrays named like:
 
 #+begin_example
   depo_data_<N>
   depo_info_<N>
+  track_info_<N>
 #+end_example
 
-The ~<N>~ counts a set of depos which are generated together (eg, an
-"event").  The ~data~ arrays are 2D of shape ~(7, n)~ where ~n~ is the number
-of depositions, O(1M).  Each depo is a 7-tuple with elements:
+We will ignore the ~info~ arrays here.
+
+The ~<N>~ counts the set of depos which are generated together (eg, an
+"event").  The ~data~ arrays are 2D of shape ~(n, 7)~ where ~n~ is the
+number of depositions over all tracks in the "event" and is
+O(100k-1M).  Each depo is a 7-tuple with elements:
 
 1. time
 2. number of electrons
@@ -230,14 +244,24 @@ of depositions, O(1M).  Each depo is a 7-tuple with elements:
 6. longitudinal extent (zero here)
 7. transverse extent (zero here)
 
-Additional ~info~ arrays will be found in the file and can be
-ignored here.
-
 A simple summary diagnostic plot for the first "event" is generated
 showing distribution of depo times and the depo locations.
 
 #+ATTR_HTML: :width 90%
 [[file:plots/depos-diagnostic.png]]
+
+The ~track_info_<N>~ arrays are [[https://numpy.org/doc/stable/user/basics.rec.html][numpy structured arrays]] with these
+"columns":
+
+- pmin :: 3-vector holding track start point in Cartesian coordinates (mm)
+- pmax :: 3-vector holding track end point in Cartesian coordinates  (mm)
+- tmin :: time at start point (ns)
+- tmax :: time at end point (ns)
+- step :: distance between steps along track (mm)
+- eper :: number of ionization electrons at each step
+
+Each of these columns have one row per "track" (line source) in the
+"event" number ~<N>~.  By default their length is 10.
 
 ** frames
 :PROPERTIES:
@@ -265,9 +289,14 @@ match.  For example:
 protodune-orig-0-1-W (960, 6000)
 #+end_example
 
-This file holds one array of 960 channels and 6000 sample time "ticks"
-and is from index=0 from the "real" data, APA ID 1 and plane "W"
-(collection plane aka plane 2 counting from 0).  "U" and "V" are
+These image arrays have shape ~(nchan, ntick)~.  That is each row is the
+waveform from one channel and has ~ntick=6000~ samples (3ms).  When
+visualized with matplotlib's ~imshow()~ you will see channels as Y-axis,
+tics as X-axis.
+
+This "W" file holds one array of 960 channels and 6000 sample time
+"ticks" and is from index=0 from the "real" data, APA ID 1 and plane
+"W" (collection plane aka plane 2 counting from 0).  "U" and "V" are
 induction planes and each will have 800 channels and the
 contemporaneous 6000 ticks.
 
@@ -409,3 +438,55 @@ effects in 2D which are lacking in q1D.
 [[file:plots/images/fake/seismic/protodune-orig-0-2-U.svg]]
 
   
+* Snakemake
+:PROPERTIES:
+:CUSTOM_ID: snake
+:END:
+
+As already introduced, this "toyzero" package is organized around a
+~snakemake~ [[file:Snakefile]] which provides automated running of a
+/directed, acyclic graph/ (DAG).  A node of the DAG is a process and
+directional edges are formed through input or output files.  
+
+It is instructive to visualize the overall DAG and ~snakemake~ provides
+this by running:
+
+#+begin_src shell :exports both :results none
+  snakemake --dag all > toyzero-all-dag.dot
+  dot -Tsvg -o toyzero-all-dag.svg toyzero-all-dag.dot
+  dot -Tpdf -o toyzero-all-dag.pdf toyzero-all-dag.dot
+#+end_src
+
+Below is the result as SVG or download the [[file:toyzero-all-dag.pdf]] to
+zoom around.
+
+#+ATTR_HTML: :width 90%
+[[file:toyzero-all-dag.svg]]
+
+The "real" documentation on toyzero *is* the Snakefile as it describes
+exactly what is run.  In principle, with the Snakefile one can always
+reproduce its results.  In practice changes in the ~wire-cell~ and
+~wirecell-*~ programs, or external data can lead to unexpected changes.
+
+
+* Hacking
+:PROPERTIES:
+:CUSTOM_ID: hack
+:END:
+
+Much of the ~toyzero~ package relies on the ~wire-cell-python~ package.
+You can develop that code locally (instead of push to GitHub +
+reinstall).  We can leverage the ~direnv~ environment for ~toyzero~ to do
+so like:
+
+#+begin_example
+  $ git clone git@github.com:wirecell/wire-cell-python.git
+  $ cd wire-cell-python/
+  $ pip install -U -e .
+#+end_example
+
+You can now hack on wire-cell-python and your changes are immediately
+made available.  If the changes are generally useful, please consider
+making a PR!
+ 
+

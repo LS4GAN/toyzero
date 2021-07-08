@@ -219,35 +219,67 @@ rule all_frames:
                apa=[0])
 
 
+
+## This rule is a little tricky because frame-split generates its
+## output file names while snake make must know these names in order
+## to build a DAG without "holes".  Since we are able to give
+## frame-split a pattern with which to form output file names we can
+## at least predict what they will be.  However, is a 1-job->N-file
+## pattern and we must exhaustively generate the output file names for
+## snakemake.  To make matters more annoying we can not (apparently?)
+## make output files from a function.  But we can call expand on
+## static data (ie, defined right here).  So, that is what we do.
+#
+split_outer_product = dict( domain=["protodune"],
+                            event=list(range(10)),
+                            apa=list(range(6)),
+                            plane=["U","V","W"] )
 rule split_images:
     input:
         domain_frames
     output:
-        directory('data/images/{domain}')
+        expand('data/images/{{domain}}/protodune-orig-{event}-{apa}-{plane}.npz',
+               **split_outer_product)
     shell: '''
     wirecell-util frame-split \
-    -f {output}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{planeletter}}.npz \
+    -f data/images/{wildcard.domain}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{plane}}.npz \
     {input}
     '''
 
-## note, we try to catch by hand some activity and this is very
-## senstive to random seeding!
+def gen_title(w):
+    if w.domain == 'real':
+        dim='2D'
+    else:
+        dim='q1D'
+    return f'"{w.domain}/{dim}, event {w.event}, APA {w.apa}, {w.plane} plane"',
+
+## Note, we must match the input here by hand to the output above
+## because the domain is not included in the expand above but is here.
+## Above is 1->N, here is 1->1.
 rule plot_split_images:
     input:
-        'data/images/{domain}/protodune-orig-0-2-U.npz'
+        'data/images/{domain}/protodune-orig-{event}-{apa}-{plane}.npz',
     output:
-        'plots/images/{domain}/{cmap}/protodune-orig-0-2-U.{ext}'
+        'plots/images/{domain}/{cmap}/protodune-orig-{event}-{apa}-{plane}.{ext}'
+    params:
+        title = gen_title
     shell: '''
     wirecell-util npz-to-img --cmap {wildcards.cmap} \
+    --title {params.title} \
+    --xtitle 'Relative ticks number' \
+    --ytitle 'Relative channel number' \
+    --ztitle 'ADC (baseline subtracted)' \
     --zoom 300:500,0:1000 --mask 0 --vmin -50 --vmax 50 \
     --dpi 600 --baseline=median -o {output} {input}
     '''
-
+## note, list-of-list for the split_images rule
 rule all_images:
     input:
-        expand(rules.split_images.output, domain=["real","fake"]),
+        expand(rules.split_images.output,
+               domain=["real","fake"]),
         expand(rules.plot_split_images.output,
                domain=["real","fake"],
+               event=[0], apa=[2], plane=["U"],
                ext=["png", "pdf", "svg"],
                cmap=["seismic", "Spectral", "terrain", "coolwarm", "viridis"])
 

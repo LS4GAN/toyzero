@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2021-07-07 Wed 18:01 -->
+<!-- 2021-07-08 Thu 13:26 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>LS4GAN's Toy Zero</title>
@@ -234,28 +234,29 @@
 </ul>
 </li>
 <li><a href="#usage">3. Usage</a></li>
-<li><a href="#hack">4. Hacking</a></li>
-<li><a href="#details">5. Details</a>
+<li><a href="#details">4. Details</a>
 <ul>
-<li><a href="#resp">5.1. resp</a></li>
-<li><a href="#wires">5.2. wires</a></li>
-<li><a href="#depos">5.3. depos</a></li>
-<li><a href="#frames">5.4. frames</a></li>
-<li><a href="#images">5.5. images</a></li>
+<li><a href="#resp">4.1. resp</a></li>
+<li><a href="#wires">4.2. wires</a></li>
+<li><a href="#depos">4.3. depos</a></li>
+<li><a href="#frames">4.4. frames</a></li>
+<li><a href="#images">4.5. images</a></li>
 </ul>
 </li>
-<li><a href="#plotting">6. Plotting</a>
+<li><a href="#plotting">5. Plotting</a>
 <ul>
-<li><a href="#imgfmt">6.1. Image formats</a></li>
-<li><a href="#cmap">6.2. Color maps</a></li>
-<li><a href="#realVfake">6.3. Real vs Fake</a></li>
+<li><a href="#imgfmt">5.1. Image formats</a></li>
+<li><a href="#cmap">5.2. Color maps</a></li>
+<li><a href="#realVfake">5.3. Real vs Fake</a></li>
 </ul>
 </li>
+<li><a href="#snake">6. Snakemake</a></li>
+<li><a href="#hack">7. Hacking</a></li>
 </ul>
 </div>
 </div>
 <p>
-Bare first steps toward LS4GAN.  <b>still work in progress</b>
+The toyzero package provides first steps toward <a href="https://ls4gan.github.io/">LS4GAN</a>.
 </p>
 
 <div id="outline-container-goals" class="outline-2">
@@ -269,25 +270,26 @@ concept.
 </p>
 
 <p>
-The final results are in the form raw ADC waveform arrays in
-per-channel rows of sampled columns.  Each array spans one of three
-wire planes from one of six anode plane assemblies (APA) of the
-ProtoDUNE-SP detector.
+The final results are in the form raw ADC (Z-axis) waveform arrays in
+per-channel rows (Y-axis) of time-sampled columns (X-axis).  Each
+array spans one of three wire planes from one of six anode plane
+assemblies (APA) of the ProtoDUNE-SP detector.
 </p>
 
 <p>
-There are two data sets <b>real</b> and <b>fake</b>.  The <b>real</b> uses the full, best
-known 2D response model and the <b>fake</b> uses an intentionally wrong
-quasi-1D model which is derived from the 2D model by zeroing all
-responses except those for the central wire.  (Note that this quasi-1D
-model is not the same of the even less accurate 1D model as it
-includes the variation within the central wire region.)
+There are two domains named <b>real</b> and <b>fake</b> (both simulated in toyzero).
+The <b>real</b> domain uses the full, best known 2D response model. The <b>fake</b>
+domain uses an intentionally "more wrong" quasi-1D model which is
+derived from the 2D model by zeroing all responses except those
+covering the central wire of interest.  (Note that this quasi-1D model
+is not the same of the "yet more wronger" 1D model as q1D includes the
+variation within the central wire region.)
 </p>
 
 <p>
 For this initial development we accept a number of simplifying
-"cheats" which we will rectify as we gain experience.  They are at
-least the following:
+"cheats" which we will rectify as we gain experience and develop the
+next phase.  They are at least the following:
 </p>
 
 <ul class="org-ul">
@@ -304,11 +306,14 @@ noise</b> effects.  We eventually will use realistic track simulation
 to a <i>data tier</i> of <b>reconstructed signal waveforms</b>.  To produce them
 we will include <b>noise models</b> in the simulation and apply <b>noise
 filtering</b> to both the fake simulation and the real detector data
-just prior to applying <b>signal processing</b>.</li>
+just prior to applying <b>signal processing</b>.  We may stop there or go
+one step further and apply Wire-Cell <b>3D tomographic imaging</b> to form
+our data tier.  Each step brings "real" and "fake" closer and thus
+allows LS4GAN to expend its deep neural nodes to find ever more
+subtle differences.</li>
 </ul>
 </div>
 </div>
-
 
 <div id="outline-container-prepare" class="outline-2">
 <h2 id="prepare"><span class="section-number-2">2</span> Prepare</h2>
@@ -328,7 +333,7 @@ management system</b>, translate the contents of the example <a href="dot.envrc"
 A one time setup of direnv:
 </p>
 
-<pre class="example" id="org65fa5ca">
+<pre class="example" id="orgbb01dd0">
 $ cd toyzero
 $ cp dot.envrc .envrc
 $ emacs .envrc  # edit to taste
@@ -346,7 +351,7 @@ required.  See <a href="https://wirecell.bnl.gov/">https://wirecell.bnl.gov/</a>
 Check if WCT is available with these commands:
 </p>
 
-<pre class="example" id="org785d45a">
+<pre class="example" id="org7c6128a">
 $ wire-cell --help
 $ wcsonnet wirecell.jsonnet
 $ echo $WIRECELL_PATH
@@ -368,7 +373,7 @@ The stand-alone <code>wire-cell-python</code> package, the <code>snakemake</code
 various other Python 3 packages are required.  
 </p>
 
-<pre class="example" id="orgf712369">
+<pre class="example" id="orge67e04a">
 $ cd toyzero
 $ pip install -r requirements.txt
 </pre>
@@ -377,11 +382,16 @@ $ pip install -r requirements.txt
 Some checks:
 </p>
 
-<pre class="example" id="org15592bb">
+<pre class="example" id="org81d1069">
 $ wirecell-&lt;TAB&gt;
 $ wirecell-util --help
 $ snakemake --help
 </pre>
+
+<p>
+See also section <a href="#hack">7</a> for info on providing a developer version of
+<code>wire-cell-python</code> code.
+</p>
 </div>
 </div>
 </div>
@@ -391,42 +401,32 @@ $ snakemake --help
 <div class="outline-text-2" id="text-usage">
 <p>
 Exercising toyzero will automatically download various files from
-Wire-Cell GitHub and run various programs.  
+Wire-Cell GitHub and run various programs.  In principle, the user
+need run only:
 </p>
 
-<p>
-This can take ten minutes or so depending on how fast your CPU is.
-</p>
-</div>
-</div>
-
-<div id="outline-container-hack" class="outline-2">
-<h2 id="hack"><span class="section-number-2">4</span> Hacking</h2>
-<div class="outline-text-2" id="text-hack">
-<p>
-Much of the <code>toyzero</code> package relies on the <code>wire-cell-python</code> package.
-You can develop that code locally (instead of push to GitHub +
-reinstall).  We can leverage the <code>direnv</code> environment for <code>toyzero</code> to do
-so like:
-</p>
-
-<pre class="example" id="org75f826d">
-$ git clone git@github.com:wirecell/wire-cell-python.git
-$ cd wire-cell-python/
-$ pip install -U -e .
+<pre class="example" id="org99ddb1d">
+$ snakemake -jall all
 </pre>
 
 <p>
-You can now hack on wire-cell-python and your changes are immediately
-made available.  If the changes are generally useful, please consider
-making a PR!
+This can take ten minutes or so depending on how fast your CPU is.
+To see what is produced:
+</p>
+
+<pre class="example" id="orge67e7e2">
+$ tree data plots
+</pre>
+
+<p>
+More information on the use of <code>snakemake</code> in toyzero is below and in
+section <a href="#snake">6</a>.
 </p>
 </div>
 </div>
 
-
 <div id="outline-container-details" class="outline-2">
-<h2 id="details"><span class="section-number-2">5</span> Details</h2>
+<h2 id="details"><span class="section-number-2">4</span> Details</h2>
 <div class="outline-text-2" id="text-details">
 <p>
 Looking into the <a href="Snakefile">Snakefile</a> one will see the <code>all</code> target aggregates a
@@ -434,7 +434,7 @@ number of <code>all_*</code> sub-targets.  You may run each ordered, piece-wise
 manner:
 </p>
 
-<pre class="example" id="orgcc91bc2">
+<pre class="example" id="org0452a59">
 $ snakemake -jall all_resp
 $ snakemake -jall all_wires
 $ snakemake -jall all_depos
@@ -448,29 +448,49 @@ Each of these steps are described more in the next subsections.
 </div>
 
 <div id="outline-container-resp" class="outline-3">
-<h3 id="resp"><span class="section-number-3">5.1</span> resp</h3>
+<h3 id="resp"><span class="section-number-3">4.1</span> resp</h3>
 <div class="outline-text-3" id="text-resp">
 <p>
-The <code>all_resp</code> target gets 2D WCT "response file" and derive from it
-quasi-1D response file and make some diagnostic plots for each.
+The <code>all_resp</code> target downloads 2D WCT "response file" and from it
+derives the quasi-1D response file.  then various diagnostic plots are
+made for each.
 </p>
 
 <p>
 Visualization of q1D and 2D responses are generated and shown below.
 First "fake" q1D and "real" 2D.  These show the instantaneous induced
-current (Z-axis) on a "wire of interest" for an that started at the
-transverse pitch direction (Y-axis) when it is at the moment of time
-(X-axis).  Note, the current is in log10 units.
+current (Z-axis) on a "wire of interest" over the drift path of an
+electron.  One row gives the response for an electron path that begins
+at the transverse (aka "pitch") location relative to the wire center
+and as given on the Y-axis.  Along that path/row, the Z/color value of
+each pixel gives the instantaneous current at a moment of time
+(X-axis).
 </p>
 
+<p>
+Note, the actual paths follow some trajectory in space but this
+information is not important for applying the response (though is very
+important for calculating the responses).  Also note, the current is
+in a "signed log10" unit with an arbitrary scaling in order to see
+both fine and gross features.
+</p>
 
-<div id="org79271fc" class="figure">
+<ul class="org-ul">
+<li>Fake/q1D field response for ProtoDUNE-SP</li>
+</ul>
+
+
+<div id="orgf8fb9c3" class="figure">
 <p><img src="plots/fake-resps-diagnostic.png" alt="fake-resps-diagnostic.png" width="90%" />
 </p>
 </div>
 
+<ul class="org-ul">
+<li>Real/2D field response for ProtoDUNE-SP</li>
+</ul>
 
-<div id="org53fab91" class="figure">
+
+<div id="orgaf59dd1" class="figure">
 <p><img src="plots/real-resps-diagnostic.png" alt="real-resps-diagnostic.png" width="90%" />
 </p>
 </div>
@@ -478,44 +498,54 @@ transverse pitch direction (Y-axis) when it is at the moment of time
 </div>
 
 <div id="outline-container-wires" class="outline-3">
-<h3 id="wires"><span class="section-number-3">5.2</span> wires</h3>
+<h3 id="wires"><span class="section-number-3">4.2</span> wires</h3>
 <div class="outline-text-3" id="text-wires">
 <p>
-The <code>all_wires</code> target gets WCT "wires file" and makes a multipage PDF
-file with diagnostic plots at <a href="plots/wires-diagnostic.pdf">plots/wires-diagnostic.pdf</a>.  Most
-of these pages may be too esoteric for most users and they
-exhaustively cover all six protodune APAs.  However, the pages showing
-wire segments may be instructive.
+The <code>all_wires</code> target downloads WCT "wires file" and makes a multipage
+PDF file with diagnostic plots at <a href="plots/wires-diagnostic.pdf">plots/wires-diagnostic.pdf</a>.
+</p>
+
+<p>
+Most of these pages may show content that is too esoteric for most
+users and they exhaustively cover all six protodune APAs.  However,
+the pages showing wire segments may be instructive.  For the most
+part, they can be ignored as "wires files" are typically well tested
+prior to making them available.
 </p>
 </div>
 </div>
 
 <div id="outline-container-depos" class="outline-3">
-<h3 id="depos"><span class="section-number-3">5.3</span> depos</h3>
+<h3 id="depos"><span class="section-number-3">4.3</span> depos</h3>
 <div class="outline-text-3" id="text-depos">
 <p>
 The <code>all_depos</code> target generates sets of ionization point depositions
 for input to the WCT simulation.  It produces a file:
 </p>
 
-<pre class="example" id="orgf02ad78">
-data/{wire}-depos.npz
+<pre class="example" id="org9d5a0c1">
+data/depos/depos.npz
 </pre>
 
 <p>
-Where <code>{wire}</code> names the wires file.  The file is in Numpy format with
-arrays named like:
+The file is in Numpy format with three types of arrays named like:
 </p>
 
-<pre class="example" id="org177a754">
+<pre class="example" id="org6dc6073">
 depo_data_&lt;N&gt;
 depo_info_&lt;N&gt;
+track_info_&lt;N&gt;
 </pre>
 
 <p>
-The <code>&lt;N&gt;</code> counts a set of depos which are generated together (eg, an
-"event").  The <code>data</code> arrays are 2D of shape <code>(7, n)</code> where <code>n</code> is the number
-of depositions, O(1M).  Each depo is a 7-tuple with elements:
+We will ignore the <code>info</code> arrays here.
+</p>
+
+<p>
+The <code>&lt;N&gt;</code> counts the set of depos which are generated together (eg, an
+"event").  The <code>data</code> arrays are 2D of shape <code>(n, 7)</code> where <code>n</code> is the
+number of depositions over all tracks in the "event" and is
+O(100k-1M).  Each depo is a 7-tuple with elements:
 </p>
 
 <ol class="org-ol">
@@ -529,25 +559,39 @@ of depositions, O(1M).  Each depo is a 7-tuple with elements:
 </ol>
 
 <p>
-Additional <code>info</code> arrays will be found in the file and can be
-ignored here.
-</p>
-
-<p>
 A simple summary diagnostic plot for the first "event" is generated
 showing distribution of depo times and the depo locations.
 </p>
 
 
-<div id="org9d9e6a7" class="figure">
+<div id="org39ba51d" class="figure">
 <p><img src="plots/depos-diagnostic.png" alt="depos-diagnostic.png" width="90%" />
 </p>
 </div>
+
+<p>
+The <code>track_info_&lt;N&gt;</code> arrays are <a href="https://numpy.org/doc/stable/user/basics.rec.html">numpy structured arrays</a> with these
+"columns":
+</p>
+
+<dl class="org-dl">
+<dt>pmin</dt><dd>3-vector holding track start point in Cartesian coordinates (mm)</dd>
+<dt>pmax</dt><dd>3-vector holding track end point in Cartesian coordinates  (mm)</dd>
+<dt>tmin</dt><dd>time at start point (ns)</dd>
+<dt>tmax</dt><dd>time at end point (ns)</dd>
+<dt>step</dt><dd>distance between steps along track (mm)</dd>
+<dt>eper</dt><dd>number of ionization electrons at each step</dd>
+</dl>
+
+<p>
+Each of these columns have one row per "track" (line source) in the
+"event" number <code>&lt;N&gt;</code>.  By default their length is 10.
+</p>
 </div>
 </div>
 
 <div id="outline-container-frames" class="outline-3">
-<h3 id="frames"><span class="section-number-3">5.4</span> frames</h3>
+<h3 id="frames"><span class="section-number-3">4.4</span> frames</h3>
 <div class="outline-text-3" id="text-frames">
 <p>
 The <code>all_frames</code> target generates "frame" data from depos by running the
@@ -559,7 +603,7 @@ For here, we treat it as a temporary.
 
 
 <div id="outline-container-images" class="outline-3">
-<h3 id="images"><span class="section-number-3">5.5</span> images</h3>
+<h3 id="images"><span class="section-number-3">4.5</span> images</h3>
 <div class="outline-text-3" id="text-images">
 <p>
 The <code>all_images</code> target processes each "frame" data to produce one 2D
@@ -568,15 +612,22 @@ assemblies.  The file name and name of the single array in the file
 match.  For example:
 </p>
 
-<pre class="example" id="org80b938c">
+<pre class="example" id="org56e041d">
 ❯ wirecell-util npzls data/images/real/protodune-orig-0-1-W.npz 
 protodune-orig-0-1-W (960, 6000)
 </pre>
 
 <p>
-This file holds one array of 960 channels and 6000 sample time "ticks"
-and is from index=0 from the "real" data, APA ID 1 and plane "W"
-(collection plane aka plane 2 counting from 0).  "U" and "V" are
+These image arrays have shape <code>(nchan, ntick)</code>.  That is each row is the
+waveform from one channel and has <code>ntick=6000</code> samples (3ms).  When
+visualized with matplotlib's <code>imshow()</code> you will see channels as Y-axis,
+tics as X-axis.
+</p>
+
+<p>
+This "W" file holds one array of 960 channels and 6000 sample time
+"ticks" and is from index=0 from the "real" data, APA ID 1 and plane
+"W" (collection plane aka plane 2 counting from 0).  "U" and "V" are
 induction planes and each will have 800 channels and the
 contemporaneous 6000 ticks.
 </p>
@@ -585,7 +636,7 @@ contemporaneous 6000 ticks.
 </div>
 
 <div id="outline-container-plotting" class="outline-2">
-<h2 id="plotting"><span class="section-number-2">6</span> Plotting</h2>
+<h2 id="plotting"><span class="section-number-2">5</span> Plotting</h2>
 <div class="outline-text-2" id="text-plotting">
 <p>
 Diagnostic plots for each APA of the first event are made in PDF, PNG
@@ -598,7 +649,7 @@ artifacts</b>.
 </div>
 
 <div id="outline-container-imgfmt" class="outline-3">
-<h3 id="imgfmt"><span class="section-number-3">6.1</span> Image formats</h3>
+<h3 id="imgfmt"><span class="section-number-3">5.1</span> Image formats</h3>
 <div class="outline-text-3" id="text-imgfmt">
 <dl class="org-dl">
 <dt>png</dt><dd>At <code>matplotlib</code> default DPI expect loss of visual data due to
@@ -621,7 +672,7 @@ its default DPI.
 </p>
 
 
-<div id="orgcda2219" class="figure">
+<div id="org2a58fd9" class="figure">
 <p><img src="plots/hidpi/frames-fake-apa0.png" alt="frames-fake-apa0.png" width="90%" />
 </p>
 </div>
@@ -631,7 +682,7 @@ to the same data as PNG at default DPI from matplotlib:
 </p>
 
 
-<div id="org2987d2f" class="figure">
+<div id="orgbca3a5e" class="figure">
 <p><img src="plots/frames-fake-apa0.png" alt="frames-fake-apa0.png" width="90%" />
 </p>
 </div>
@@ -640,14 +691,14 @@ to the same data as PNG at default DPI from matplotlib:
 <p>
 If you need more zoom from your <code>evince</code> PDF viewer try
 </p>
-<pre class="example" id="orga9fef6d">
+<pre class="example" id="org874e4bd">
 ❯ gsettings set org.gnome.Evince page-cache-size 2014
 </pre>
 </div>
 </div>
 
 <div id="outline-container-cmap" class="outline-3">
-<h3 id="cmap"><span class="section-number-3">6.2</span> Color maps</h3>
+<h3 id="cmap"><span class="section-number-3">5.2</span> Color maps</h3>
 <div class="outline-text-3" id="text-cmap">
 <p>
 Selecting a good <a href="https://matplotlib.org/stable/gallery/color/colormap_reference.html">color map</a> can have a big impact.  Some guidance:
@@ -670,7 +721,7 @@ The <code>wire-cell-python</code> package provides a command to easily visualize
 as command line options:
 </p>
 
-<pre class="example" id="org047dedc">
+<pre class="example" id="orgfb1fcb6">
 ❯ wirecell-util npz-to-img --help
 Usage: wirecell-util npz-to-img [OPTIONS] NPZFILE
 
@@ -705,7 +756,7 @@ masked to white regardless of color map.
 </ul>
 
 
-<div id="orgdb4cfdd" class="figure">
+<div id="org9450842" class="figure">
 <p><img src="plots/images/real/coolwarm/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
 </p>
 </div>
@@ -715,7 +766,7 @@ masked to white regardless of color map.
 </ul>
 
 
-<div id="orgb266043" class="figure">
+<div id="org386cb37" class="figure">
 <p><img src="plots/images/real/seismic/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
 </p>
 </div>
@@ -725,7 +776,7 @@ masked to white regardless of color map.
 </ul>
 
 
-<div id="org1ca91d6" class="figure">
+<div id="org04f977b" class="figure">
 <p><img src="plots/images/real/Spectral/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
 </p>
 </div>
@@ -735,7 +786,7 @@ masked to white regardless of color map.
 </ul>
 
 
-<div id="org0fba657" class="figure">
+<div id="orgd38ce6b" class="figure">
 <p><img src="plots/images/real/viridis/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
 </p>
 </div>
@@ -743,7 +794,7 @@ masked to white regardless of color map.
 </div>
 
 <div id="outline-container-realVfake" class="outline-3">
-<h3 id="realVfake"><span class="section-number-3">6.3</span> Real vs Fake</h3>
+<h3 id="realVfake"><span class="section-number-3">5.3</span> Real vs Fake</h3>
 <div class="outline-text-3" id="text-realVfake">
 <p>
 We select one event region (U plane) to show "real" 2D vs "fake" q1D,
@@ -756,7 +807,7 @@ effects in 2D which are lacking in q1D.
 </ul>
 
 
-<div id="org721521a" class="figure">
+<div id="org49a406d" class="figure">
 <p><object type="image/svg+xml" data="plots/images/real/seismic/protodune-orig-0-2-U.svg" class="org-svg" width="90%">
 Sorry, your browser does not support SVG.</object>
 </p>
@@ -768,7 +819,7 @@ Sorry, your browser does not support SVG.</object>
 </ul>
 
 
-<div id="orgb3a8883" class="figure">
+<div id="org5b6fa86" class="figure">
 <p><object type="image/svg+xml" data="plots/images/fake/seismic/protodune-orig-0-2-U.svg" class="org-svg" width="90%">
 Sorry, your browser does not support SVG.</object>
 </p>
@@ -776,10 +827,79 @@ Sorry, your browser does not support SVG.</object>
 </div>
 </div>
 </div>
+
+
+<div id="outline-container-snake" class="outline-2">
+<h2 id="snake"><span class="section-number-2">6</span> Snakemake</h2>
+<div class="outline-text-2" id="text-snake">
+<p>
+As already introduced, this "toyzero" package is organized around a
+<code>snakemake</code> <a href="Snakefile">Snakefile</a> which provides automated running of a
+<i>directed, acyclic graph</i> (DAG).  A node of the DAG is a process and
+directional edges are formed through input or output files.  
+</p>
+
+<p>
+It is instructive to visualize the overall DAG and <code>snakemake</code> provides
+this by running:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">snakemake --dag all &gt; toyzero-all-dag.dot
+dot -Tsvg -o toyzero-all-dag.svg toyzero-all-dag.dot
+dot -Tpdf -o toyzero-all-dag.pdf toyzero-all-dag.dot
+</pre>
+</div>
+
+<p>
+Below is the result as SVG or download the <a href="toyzero-all-dag.pdf">toyzero-all-dag.pdf</a> to
+zoom around.
+</p>
+
+
+<div id="orgd358308" class="figure">
+<p><object type="image/svg+xml" data="toyzero-all-dag.svg" class="org-svg" width="90%">
+Sorry, your browser does not support SVG.</object>
+</p>
+</div>
+
+<p>
+The "real" documentation on toyzero <b>is</b> the Snakefile as it describes
+exactly what is run.  In principle, with the Snakefile one can always
+reproduce its results.  In practice changes in the <code>wire-cell</code> and
+<code>wirecell-*</code> programs, or external data can lead to unexpected changes.
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-hack" class="outline-2">
+<h2 id="hack"><span class="section-number-2">7</span> Hacking</h2>
+<div class="outline-text-2" id="text-hack">
+<p>
+Much of the <code>toyzero</code> package relies on the <code>wire-cell-python</code> package.
+You can develop that code locally (instead of push to GitHub +
+reinstall).  We can leverage the <code>direnv</code> environment for <code>toyzero</code> to do
+so like:
+</p>
+
+<pre class="example" id="org4d998ce">
+$ git clone git@github.com:wirecell/wire-cell-python.git
+$ cd wire-cell-python/
+$ pip install -U -e .
+</pre>
+
+<p>
+You can now hack on wire-cell-python and your changes are immediately
+made available.  If the changes are generally useful, please consider
+making a PR!
+</p>
+</div>
+</div>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: BV</p>
-<p class="date">Created: 2021-07-07 Wed 18:01</p>
+<p class="date">Created: 2021-07-08 Thu 13:26</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

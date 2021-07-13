@@ -242,7 +242,7 @@ rule split_images:
                **split_outer_product)
     shell: '''
     wirecell-util frame-split \
-    -f data/images/{wildcards.domain}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{plane}}.npz \
+    -f data/images/{wildcards.domain}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{planeletter}}.npz \
     {input}
     '''
 

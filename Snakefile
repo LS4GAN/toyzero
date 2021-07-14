@@ -5,10 +5,24 @@ import os
 from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
 HTTP = HTTPRemoteProvider()
 
+# You can override with
+##  $ snakemake --configfile mycfg.yaml [...] 
+configfile: "toyzero.yaml"
+
+# Or you can set individual config values
+##  $ snakemake --config ntracks=100 [...]
+outdir = config.get("outdir", os.environ.get("TOYZERO_OUTDIR", "."))
+datadir = os.path.join(outdir, config.get("datadir", "data"))
+plotdir = os.path.join(outdir, config.get("plotdir", "plots"))
+seed = config.get("seed", "1,2,3,4")
+ntracks = config["ntracks"]#, 10)
+nevents = config.get("nevents", 10)
+print(f"NTRACKS:{ntracks}")
+
+# The rest are hard wired for now
 wcdata_url = "https://github.com/WireCell/wire-cell-data/raw/master"
 wcdata_ext = "json.bz2"
 
-outdir = os.environ.get("TOYZERO_OUTDIR", "data")
 
 ## for now we support a low diversity build.  Just one detector (one
 ## set of wires which are downloaded) which are for ProtoDUNE-SP and
@@ -19,12 +33,12 @@ resps = "dune-garfield-1d565"
 wires = "protodune-wires-larsoft-v4"
 
 # some important file names
-real_resps    = f'{outdir}/resps/real-resps.{wcdata_ext}'
-fake_resps    = f'{outdir}/resps/fake-resps.{wcdata_ext}'
-domain_resps  = f'{outdir}/resps/{{domain}}-resps.{wcdata_ext}'
-wires_file    = f'{outdir}/wires/wires.{wcdata_ext}'
-depos_file    = f'{outdir}/depos/depos.npz'
-domain_frames = f'{outdir}/frames/{{domain}}-frames.npz'
+real_resps    = f'{datadir}/resps/real-resps.{wcdata_ext}'
+fake_resps    = f'{datadir}/resps/fake-resps.{wcdata_ext}'
+domain_resps  = f'{datadir}/resps/{{domain}}-resps.{wcdata_ext}'
+wires_file    = f'{datadir}/wires/wires.{wcdata_ext}'
+depos_file    = f'{datadir}/depos/depos.npz'
+domain_frames = f'{datadir}/frames/{{domain}}-frames.npz'
 
 # resp - prepare response files
 
@@ -34,7 +48,7 @@ rule get_resp_real:
     output:
         real_resps
     run:
-        shell("mkdir -p {outdir}")
+        shell("mkdir -p {datadir}")
         shell("mv {input} {output}")
 
 rule gen_resp_fake:
@@ -50,9 +64,9 @@ rule plot_resp:
     input:
         domain_resps
     output:
-        f'{outdir}/plots/{{domain}}-resps-diagnostic.png'
+        f'{plotdir}/{{domain}}-resps-diagnostic.png'
     shell: '''
-    mkdir -p plots; 
+    mkdir -p {plotdir}; 
     wirecell-sigproc plot-response {input} {output}
     '''
 
@@ -70,7 +84,7 @@ rule get_wires:
     output:
         wires_file
     run:
-        shell("mkdir -p {outdir}")
+        shell("mkdir -p {datadir}")
         shell("mv {input} {output}")
 
 
@@ -78,9 +92,9 @@ rule plot_wires:
     input:
         wires_file
     output:
-        f'{outdir}/plots/wires-diagnostic.pdf'
+        f'{plotdir}/wires-diagnostic.pdf'
     shell: '''
-    mkdir -p plots;
+    mkdir -p {plotdir};
     wirecell-util plot-wires {input} {output}
     '''
 
@@ -111,8 +125,7 @@ def gen_depos_cfg(w):
         corn.append(f'{c:.1f}*mm')
         diag.append(f'{dc:.1f}*mm')
 
-    return dict(tracks = 10, sets = 10, # fixme: get from config file?
-                seed = "1,2,3,4",
+    return dict(tracks = ntracks, sets = nevents, seed = seed,
                 corn = ','.join(corn), diag = ','.join(diag))
 
 rule gen_depos:
@@ -134,7 +147,7 @@ rule plot_depos:
     input:
         depos_file
     output:
-        f'{outdir}/plots/depos-diagnostic.png'
+        f'{plotdir}/depos-diagnostic.png'
     shell: '''
     wirecell-gen plot-sim {input} {output} -p depo
     '''
@@ -151,10 +164,10 @@ rule sim_dots:
     input:
         config = 'cfg/main-depos-sim-adc.jsonnet'
     output:
-        json = f'{outdir}/sim-graph.json',
-        dot  = f'{outdir}/sim-graph.dot',
-        png  = f'{outdir}/plots/sim-graph.png',
-        pdf  = f'{outdir}/plots/sim-graph.pdf'
+        json = f'{plotdir}/sim-graph.json',
+        dot  = f'{plotdir}/sim-graph.dot',
+        png  = f'{plotdir}/sim-graph.png',
+        pdf  = f'{plotdir}/sim-graph.pdf'
     shell: '''
     wcsonnet \
     -P cfg \
@@ -195,7 +208,7 @@ rule plot_frames:
     input:
         domain_frames
     output:
-        f'{outdir}/plots/frames-{{domain}}-apa{{apa}}.{{ext}}'
+        f'{plotdir}/frames-{{domain}}-apa{{apa}}.{{ext}}'
     params:
         p = gen_plot_frames
     shell:'''
@@ -203,9 +216,9 @@ rule plot_frames:
     '''
 rule plot_frames_hidpi:
     input:
-        f'{outdir}/plots/frames-{{domain}}-apa{{apa}}.pdf'
+        f'{plotdir}/frames-{{domain}}-apa{{apa}}.pdf'
     output:
-        f'{outdir}/plots/hidpi/frames-{{domain}}-apa{{apa}}.png'
+        f'{plotdir}/hidpi/frames-{{domain}}-apa{{apa}}.png'
     params:
 
     shell:'''
@@ -238,18 +251,17 @@ split_outer_product = dict(
     event  = list(range(10)),
     apa    = list(range(6)),
     plane  = ["U","V","W"],
-    outdir = outdir,
 )
 
 rule split_images:
     input:
         domain_frames
     output:
-        expand('{outdir}/images/{{domain}}/protodune-orig-{event}-{apa}-{plane}.npz',
+        expand(datadir+'/images/{{domain}}/protodune-orig-{event}-{apa}-{plane}.npz',
                **split_outer_product)
     shell: '''
     wirecell-util frame-split \
-    -f {outdir}/images/{wildcards.domain}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{planeletter}}.npz \
+    -f {datadir}/images/{wildcards.domain}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{planeletter}}.npz \
     {input}
     '''
 
@@ -265,9 +277,9 @@ def gen_title(w):
 ## Above is 1->N, here is 1->1.
 rule plot_split_images:
     input:
-        '{outdir}/images/{domain}/protodune-orig-{event}-{apa}-{plane}.npz',
+        datadir+'/images/{domain}/protodune-orig-{event}-{apa}-{plane}.npz',
     output:
-        '{outdir}/plots/images/{domain}/{cmap}/protodune-orig-{event}-{apa}-{plane}.{ext}'
+        plotdir+'/images/{domain}/{cmap}/protodune-orig-{event}-{apa}-{plane}.{ext}'
     params:
         title = gen_title
     shell: '''
@@ -289,9 +301,11 @@ rule all_images:
             event  = [0], apa=[2], plane=["U"],
             ext    = ["png", "pdf", "svg"],
             cmap   = ["seismic", "Spectral", "terrain", "coolwarm", "viridis"],
-            outdir = outdir,
         )
 
+rule just_images:
+    input:
+        expand(rules.split_images.output, domain=["real","fake"]),
 
 rule all:
     input:
@@ -300,3 +314,4 @@ rule all:
         rules.all_depos.input,
         rules.all_frames.input,
         rules.all_images.input
+

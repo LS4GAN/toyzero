@@ -138,8 +138,15 @@ To see what is produced:
   $ tree data plots
 #+end_example
 
+To generate the minimum needed for the "images" data tier (see below)
+you can do:
+
+#+begin_example
+  $ snakemake -jall just_images
+#+end_example
+
 More information on the use of ~snakemake~ in toyzero is below and in
-section [[Snakemake]].
+sections [[Configuration]] and [[Snakemake]].
 
 * Details
 :PROPERTIES:
@@ -438,6 +445,42 @@ effects in 2D which are lacking in q1D.
 [[file:plots/images/fake/seismic/protodune-orig-0-2-U.svg]]
 
   
+* Configuration
+:PROPERTIES:
+:CUSTOM_ID: config
+:END:
+
+By default, ~toyzero~ operates as a generator.  That is, every time a
+particular version is run it should always produce essentially an
+identical result.
+
+Some high-level parameters may be changed to produce different
+results.  These can be controlled by a configuration file.  For
+example the default configuration is held in:
+
+#+include: toyzero.yaml src yaml
+
+To customize,
+
+#+begin_example
+  $ cp toyzero.yaml mycfg.yaml
+  $ emacs mycfg.yaml
+  $ snakemake -jall --configfile mycfg.yaml all
+#+end_example
+
+Files carry identical names between the different variant runs.  To
+avoid collision be sure to set ~datadir~ and ~plotdir~ to locations not
+yet used.
+
+You may also customize specific parameters from the command line:
+
+#+begin_example
+  $ snakemake -jall --config outdir=junk --config ntracks=10 all_depos
+  $ eom junk/plots/depos-diagnostic.png 
+#+end_example
+
+A ~--config~ wins over an entry in a ~--configfile~.
+
 * Snakemake
 :PROPERTIES:
 :CUSTOM_ID: snake

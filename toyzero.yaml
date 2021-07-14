@@ -1,0 +1,11 @@
+---
+# DO NOT EDIT, make a copy, edit that.
+# This is the default toyzero config file.
+# Use like:
+#   snakemake --configfile mycfg.yaml -jall all
+outdir: "."
+datadir: "data"
+plotdir: "plots"
+seed: "1,2,3,4"
+ntracks: 10
+nevents: 10

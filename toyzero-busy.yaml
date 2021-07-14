@@ -1,0 +1,5 @@
+# A variant that makes 100 tracks per "event"
+---
+outdir: "busy"
+ntracks: 100
+

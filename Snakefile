@@ -1,11 +1,14 @@
 #!/usr/bin/env snakemake
 
 import json
+import os
 from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
 HTTP = HTTPRemoteProvider()
 
 wcdata_url = "https://github.com/WireCell/wire-cell-data/raw/master"
 wcdata_ext = "json.bz2"
+
+outdir = os.environ.get("TOYZERO_OUTDIR", "data")
 
 ## for now we support a low diversity build.  Just one detector (one
 ## set of wires which are downloaded) which are for ProtoDUNE-SP and
@@ -16,12 +19,12 @@ resps = "dune-garfield-1d565"
 wires = "protodune-wires-larsoft-v4"
 
 # some important file names
-real_resps = f'data/resps/real-resps.{wcdata_ext}'
-fake_resps = f'data/resps/fake-resps.{wcdata_ext}'
-domain_resps = f'data/resps/{{domain}}-resps.{wcdata_ext}'
-wires_file = f'data/wires/wires.{wcdata_ext}'
-depos_file = 'data/depos/depos.npz'
-domain_frames = 'data/frames/{domain}-frames.npz'
+real_resps    = f'{outdir}/resps/real-resps.{wcdata_ext}'
+fake_resps    = f'{outdir}/resps/fake-resps.{wcdata_ext}'
+domain_resps  = f'{outdir}/resps/{{domain}}-resps.{wcdata_ext}'
+wires_file    = f'{outdir}/wires/wires.{wcdata_ext}'
+depos_file    = f'{outdir}/depos/depos.npz'
+domain_frames = f'{outdir}/frames/{{domain}}-frames.npz'
 
 # resp - prepare response files
 
@@ -31,7 +34,7 @@ rule get_resp_real:
     output:
         real_resps
     run:
-        shell("mkdir -p data")
+        shell("mkdir -p {outdir}")
         shell("mv {input} {output}")
 
 rule gen_resp_fake:
@@ -47,7 +50,7 @@ rule plot_resp:
     input:
         domain_resps
     output:
-        'plots/{domain}-resps-diagnostic.png'
+        f'{outdir}/plots/{{domain}}-resps-diagnostic.png'
     shell: '''
     mkdir -p plots; 
     wirecell-sigproc plot-response {input} {output}
@@ -67,7 +70,7 @@ rule get_wires:
     output:
         wires_file
     run:
-        shell("mkdir -p data")
+        shell("mkdir -p {outdir}")
         shell("mv {input} {output}")
 
 
@@ -75,7 +78,7 @@ rule plot_wires:
     input:
         wires_file
     output:
-        'plots/wires-diagnostic.pdf'
+        f'{outdir}/plots/wires-diagnostic.pdf'
     shell: '''
     mkdir -p plots;
     wirecell-util plot-wires {input} {output}
@@ -131,7 +134,7 @@ rule plot_depos:
     input:
         depos_file
     output:
-        'plots/depos-diagnostic.png'
+        f'{outdir}/plots/depos-diagnostic.png'
     shell: '''
     wirecell-gen plot-sim {input} {output} -p depo
     '''
@@ -148,10 +151,10 @@ rule sim_dots:
     input:
         config = 'cfg/main-depos-sim-adc.jsonnet'
     output:
-        json = 'data/sim-graph.json',
-        dot = 'data/sim-graph.dot',
-        png = 'plots/sim-graph.png',
-        pdf = 'plots/sim-graph.pdf'
+        json = f'{outdir}/sim-graph.json',
+        dot  = f'{outdir}/sim-graph.dot',
+        png  = f'{outdir}/plots/sim-graph.png',
+        pdf  = f'{outdir}/plots/sim-graph.pdf'
     shell: '''
     wcsonnet \
     -P cfg \
@@ -192,7 +195,7 @@ rule plot_frames:
     input:
         domain_frames
     output:
-        'plots/frames-{domain}-apa{apa}.{ext}'
+        f'{outdir}/plots/frames-{{domain}}-apa{{apa}}.{{ext}}'
     params:
         p = gen_plot_frames
     shell:'''
@@ -200,9 +203,9 @@ rule plot_frames:
     '''
 rule plot_frames_hidpi:
     input:
-        'plots/frames-{domain}-apa{apa}.pdf'
+        f'{outdir}/plots/frames-{{domain}}-apa{{apa}}.pdf'
     output:
-        'plots/hidpi/frames-{domain}-apa{apa}.png'
+        f'{outdir}/plots/hidpi/frames-{{domain}}-apa{{apa}}.png'
     params:
 
     shell:'''
@@ -230,19 +233,23 @@ rule all_frames:
 ## make output files from a function.  But we can call expand on
 ## static data (ie, defined right here).  So, that is what we do.
 #
-split_outer_product = dict( domain=["protodune"],
-                            event=list(range(10)),
-                            apa=list(range(6)),
-                            plane=["U","V","W"] )
+split_outer_product = dict(
+    domain = ["protodune"],
+    event  = list(range(10)),
+    apa    = list(range(6)),
+    plane  = ["U","V","W"],
+    outdir = outdir,
+)
+
 rule split_images:
     input:
         domain_frames
     output:
-        expand('data/images/{{domain}}/protodune-orig-{event}-{apa}-{plane}.npz',
+        expand('{outdir}/images/{{domain}}/protodune-orig-{event}-{apa}-{plane}.npz',
                **split_outer_product)
     shell: '''
     wirecell-util frame-split \
-    -f data/images/{wildcards.domain}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{planeletter}}.npz \
+    -f {outdir}/images/{wildcards.domain}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{planeletter}}.npz \
     {input}
     '''
 
@@ -258,9 +265,9 @@ def gen_title(w):
 ## Above is 1->N, here is 1->1.
 rule plot_split_images:
     input:
-        'data/images/{domain}/protodune-orig-{event}-{apa}-{plane}.npz',
+        '{outdir}/images/{domain}/protodune-orig-{event}-{apa}-{plane}.npz',
     output:
-        'plots/images/{domain}/{cmap}/protodune-orig-{event}-{apa}-{plane}.{ext}'
+        '{outdir}/plots/images/{domain}/{cmap}/protodune-orig-{event}-{apa}-{plane}.{ext}'
     params:
         title = gen_title
     shell: '''
@@ -275,13 +282,15 @@ rule plot_split_images:
 ## note, list-of-list for the split_images rule
 rule all_images:
     input:
-        expand(rules.split_images.output,
-               domain=["real","fake"]),
-        expand(rules.plot_split_images.output,
-               domain=["real","fake"],
-               event=[0], apa=[2], plane=["U"],
-               ext=["png", "pdf", "svg"],
-               cmap=["seismic", "Spectral", "terrain", "coolwarm", "viridis"])
+        expand(rules.split_images.output, domain=["real","fake"]),
+        expand(
+            rules.plot_split_images.output,
+            domain = ["real","fake"],
+            event  = [0], apa=[2], plane=["U"],
+            ext    = ["png", "pdf", "svg"],
+            cmap   = ["seismic", "Spectral", "terrain", "coolwarm", "viridis"],
+            outdir = outdir,
+        )
 
 
 rule all:

@@ -11,13 +11,20 @@ configfile: "toyzero.yaml"
 
 # Or you can set individual config values
 ##  $ snakemake --config ntracks=100 [...]
+datadir = config.get("datadir", "data")
+plotdir = config.get("plotdir", "plots")
 outdir = config.get("outdir", os.environ.get("TOYZERO_OUTDIR", "."))
-datadir = os.path.join(outdir, config.get("datadir", "data"))
-plotdir = os.path.join(outdir, config.get("plotdir", "plots"))
+
+datadir = os.path.abspath(os.path.join(outdir, datadir))
+plotdir = os.path.abspath(os.path.join(outdir, plotdir))
+    
 seed = config.get("seed", "1,2,3,4")
-ntracks = config["ntracks"]#, 10)
+ntracks = config.get("ntracks", 10)
 nevents = config.get("nevents", 10)
-print(f"NTRACKS:{ntracks}")
+wcloglvl = config.get("wcloglvl", "info")
+# print(f"OUTDIR:{outdir}")
+# print(f"NEVENTS:{nevents}")
+# print(f"WCLOGLVL:{wcloglvl}")
 
 # The rest are hard wired for now
 wcdata_url = "https://github.com/WireCell/wire-cell-data/raw/master"
@@ -49,7 +56,7 @@ rule get_resp_real:
         real_resps
     run:
         shell("mkdir -p {datadir}")
-        shell("mv {input} {output}")
+        shell("cp {input} {output}")
 
 rule gen_resp_fake:
     input:
@@ -85,7 +92,7 @@ rule get_wires:
         wires_file
     run:
         shell("mkdir -p {datadir}")
-        shell("mv {input} {output}")
+        shell("cp {input} {output}")
 
 
 rule plot_wires:
@@ -190,8 +197,9 @@ rule sim_frames:
     output:
         frames = domain_frames
     shell: '''
+    rm -f {output.frames}; 
     wire-cell \
-    -l stdout -L info \
+    -l stdout -L {config[wcloglvl]} \
     -P cfg \
     -A input={input.depos} \
     -A output={output.frames} \
@@ -248,7 +256,7 @@ rule all_frames:
 #
 split_outer_product = dict(
     domain = ["protodune"],
-    event  = list(range(10)),
+    event  = list(range(nevents)),
     apa    = list(range(6)),
     plane  = ["U","V","W"],
 )

@@ -9,3 +9,5 @@ plotdir: "plots"
 seed: "1,2,3,4"
 ntracks: 10
 nevents: 10
+# how noisy wire-cell should be.  "debug" is more, "error" is less
+wcloglvl: info

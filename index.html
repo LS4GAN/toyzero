@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2021-07-14 Wed 17:09 -->
+<!-- 2021-07-15 Thu 12:57 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>LS4GAN's Toy Zero</title>
@@ -334,7 +334,7 @@ management system</b>, translate the contents of the example <a href="dot.envrc"
 A one time setup of direnv:
 </p>
 
-<pre class="example" id="orgaf00083">
+<pre class="example" id="orgce23220">
 $ cd toyzero
 $ cp dot.envrc .envrc
 $ emacs .envrc  # edit to taste
@@ -352,7 +352,7 @@ required.  See <a href="https://wirecell.bnl.gov/">https://wirecell.bnl.gov/</a>
 Check if WCT is available with these commands:
 </p>
 
-<pre class="example" id="org8b60dfd">
+<pre class="example" id="org25be2ad">
 $ wire-cell --help
 $ wcsonnet wirecell.jsonnet
 $ echo $WIRECELL_PATH
@@ -374,7 +374,7 @@ The stand-alone <code>wire-cell-python</code> package, the <code>snakemake</code
 various other Python 3 packages are required.  
 </p>
 
-<pre class="example" id="org0fafbb1">
+<pre class="example" id="orgfcc3980">
 $ cd toyzero
 $ pip install -r requirements.txt
 </pre>
@@ -383,7 +383,7 @@ $ pip install -r requirements.txt
 Some checks:
 </p>
 
-<pre class="example" id="orgaf80711">
+<pre class="example" id="org95e7ac0">
 $ wirecell-&lt;TAB&gt;
 $ wirecell-util --help
 $ snakemake --help
@@ -406,7 +406,7 @@ Wire-Cell GitHub and run various programs.  In principle, the user
 need run only:
 </p>
 
-<pre class="example" id="org44fd7e5">
+<pre class="example" id="org4fc864c">
 $ snakemake -jall all
 </pre>
 
@@ -415,7 +415,7 @@ This can take ten minutes or so depending on how fast your CPU is.
 To see what is produced:
 </p>
 
-<pre class="example" id="org8dbc096">
+<pre class="example" id="org705c35f">
 $ tree data plots
 </pre>
 
@@ -424,7 +424,7 @@ To generate the minimum needed for the "images" data tier (see below)
 you can do:
 </p>
 
-<pre class="example" id="org8c26b84">
+<pre class="example" id="org67de176">
 $ snakemake -jall just_images
 </pre>
 
@@ -444,7 +444,7 @@ number of <code>all_*</code> sub-targets.  You may run each ordered, piece-wise
 manner:
 </p>
 
-<pre class="example" id="orgd68e6aa">
+<pre class="example" id="orge162f59">
 $ snakemake -jall all_resp
 $ snakemake -jall all_wires
 $ snakemake -jall all_depos
@@ -490,7 +490,7 @@ both fine and gross features.
 </ul>
 
 
-<div id="orgd986d1a" class="figure">
+<div id="org7991f04" class="figure">
 <p><img src="plots/fake-resps-diagnostic.png" alt="fake-resps-diagnostic.png" width="90%" />
 </p>
 </div>
@@ -500,7 +500,7 @@ both fine and gross features.
 </ul>
 
 
-<div id="orgcdb2aad" class="figure">
+<div id="orgfdc0e93" class="figure">
 <p><img src="plots/real-resps-diagnostic.png" alt="real-resps-diagnostic.png" width="90%" />
 </p>
 </div>
@@ -533,7 +533,7 @@ The <code>all_depos</code> target generates sets of ionization point depositions
 for input to the WCT simulation.  It produces a file:
 </p>
 
-<pre class="example" id="org9202463">
+<pre class="example" id="orga8a08f5">
 data/depos/depos.npz
 </pre>
 
@@ -541,7 +541,7 @@ data/depos/depos.npz
 The file is in Numpy format with three types of arrays named like:
 </p>
 
-<pre class="example" id="org4b7fa85">
+<pre class="example" id="org6349a37">
 depo_data_&lt;N&gt;
 depo_info_&lt;N&gt;
 track_info_&lt;N&gt;
@@ -574,7 +574,7 @@ showing distribution of depo times and the depo locations.
 </p>
 
 
-<div id="orge110bbe" class="figure">
+<div id="org66effae" class="figure">
 <p><img src="plots/depos-diagnostic.png" alt="depos-diagnostic.png" width="90%" />
 </p>
 </div>
@@ -622,7 +622,7 @@ assemblies.  The file name and name of the single array in the file
 match.  For example:
 </p>
 
-<pre class="example" id="orga9f93a6">
+<pre class="example" id="org9aa72ee">
 ❯ wirecell-util npzls data/images/real/protodune-orig-0-1-W.npz 
 protodune-orig-0-1-W (960, 6000)
 </pre>
@@ -682,7 +682,7 @@ its default DPI.
 </p>
 
 
-<div id="org7465627" class="figure">
+<div id="orgb9814f3" class="figure">
 <p><img src="plots/hidpi/frames-fake-apa0.png" alt="frames-fake-apa0.png" width="90%" />
 </p>
 </div>
@@ -692,7 +692,7 @@ to the same data as PNG at default DPI from matplotlib:
 </p>
 
 
-<div id="org30a2620" class="figure">
+<div id="orgf2036e5" class="figure">
 <p><img src="plots/frames-fake-apa0.png" alt="frames-fake-apa0.png" width="90%" />
 </p>
 </div>
@@ -701,7 +701,7 @@ to the same data as PNG at default DPI from matplotlib:
 <p>
 If you need more zoom from your <code>evince</code> PDF viewer try
 </p>
-<pre class="example" id="org0114f19">
+<pre class="example" id="orga85091d">
 ❯ gsettings set org.gnome.Evince page-cache-size 2014
 </pre>
 </div>
@@ -731,7 +731,7 @@ The <code>wire-cell-python</code> package provides a command to easily visualize
 as command line options:
 </p>
 
-<pre class="example" id="org1e27329">
+<pre class="example" id="org525b627">
 ❯ wirecell-util npz-to-img --help
 Usage: wirecell-util npz-to-img [OPTIONS] NPZFILE
 
@@ -766,7 +766,7 @@ masked to white regardless of color map.
 </ul>
 
 
-<div id="org47f511c" class="figure">
+<div id="orgf4dd127" class="figure">
 <p><img src="plots/images/real/coolwarm/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
 </p>
 </div>
@@ -776,7 +776,7 @@ masked to white regardless of color map.
 </ul>
 
 
-<div id="orgbbd3cbe" class="figure">
+<div id="org43b5b26" class="figure">
 <p><img src="plots/images/real/seismic/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
 </p>
 </div>
@@ -786,7 +786,7 @@ masked to white regardless of color map.
 </ul>
 
 
-<div id="orge62a2fa" class="figure">
+<div id="org874cefe" class="figure">
 <p><img src="plots/images/real/Spectral/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
 </p>
 </div>
@@ -796,7 +796,7 @@ masked to white regardless of color map.
 </ul>
 
 
-<div id="org6eb4694" class="figure">
+<div id="orgc390a47" class="figure">
 <p><img src="plots/images/real/viridis/protodune-orig-0-2-U.png" alt="protodune-orig-0-2-U.png" width="90%" />
 </p>
 </div>
@@ -817,7 +817,7 @@ effects in 2D which are lacking in q1D.
 </ul>
 
 
-<div id="orgaa604e6" class="figure">
+<div id="org5185b56" class="figure">
 <p><object type="image/svg+xml" data="plots/images/real/seismic/protodune-orig-0-2-U.svg" class="org-svg" width="90%">
 Sorry, your browser does not support SVG.</object>
 </p>
@@ -829,7 +829,7 @@ Sorry, your browser does not support SVG.</object>
 </ul>
 
 
-<div id="orgd101ddb" class="figure">
+<div id="org0645f21" class="figure">
 <p><object type="image/svg+xml" data="plots/images/fake/seismic/protodune-orig-0-2-U.svg" class="org-svg" width="90%">
 Sorry, your browser does not support SVG.</object>
 </p>
@@ -866,6 +866,8 @@ plotdir: "plots"
 seed: "1,2,3,4"
 ntracks: 10
 nevents: 10
+# how noisy wire-cell should be.  "debug" is more, "error" is less
+wcloglvl: info
 </pre>
 </div>
 
@@ -873,7 +875,7 @@ nevents: 10
 To customize,
 </p>
 
-<pre class="example" id="orgbdc815f">
+<pre class="example" id="org8941416">
 $ cp toyzero.yaml mycfg.yaml
 $ emacs mycfg.yaml
 $ snakemake -jall --configfile mycfg.yaml all
@@ -889,13 +891,15 @@ yet used.
 You may also customize specific parameters from the command line:
 </p>
 
-<pre class="example" id="org08d12cf">
-$ snakemake -jall --config outdir=junk --config ntracks=10 all_depos
+<pre class="example" id="org7080cd1">
+$ snakemake -jall --config outdir=junk ntracks=10 all_depos
 $ eom junk/plots/depos-diagnostic.png 
 </pre>
 
 <p>
-A <code>--config</code> wins over an entry in a <code>--configfile</code>.
+A <code>--config</code> wins over an entry in a <code>--configfile</code>.  Note, a single
+<code>--config</code> flag should be used to indicate all parameter overrides.
+Adding another <code>--config</code> will negate all prior.
 </p>
 </div>
 </div>
@@ -916,7 +920,7 @@ this by running:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-shell">snakemake --dag all &gt; toyzero-all-dag.dot
+<pre class="src src-shell">snakemake --dag all just_images &gt; toyzero-all-dag.dot
 dot -Tsvg -o toyzero-all-dag.svg toyzero-all-dag.dot
 dot -Tpdf -o toyzero-all-dag.pdf toyzero-all-dag.dot
 </pre>
@@ -928,7 +932,7 @@ zoom around.
 </p>
 
 
-<div id="org11bb202" class="figure">
+<div id="orgaac364c" class="figure">
 <p><object type="image/svg+xml" data="toyzero-all-dag.svg" class="org-svg" width="90%">
 Sorry, your browser does not support SVG.</object>
 </p>
@@ -954,7 +958,7 @@ reinstall).  We can leverage the <code>direnv</code> environment for <code>toyze
 so like:
 </p>
 
-<pre class="example" id="orgc7d8947">
+<pre class="example" id="org97ebd81">
 $ git clone git@github.com:wirecell/wire-cell-python.git
 $ cd wire-cell-python/
 $ pip install -U -e .
@@ -970,7 +974,7 @@ making a PR!
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: BV</p>
-<p class="date">Created: 2021-07-14 Wed 17:09</p>
+<p class="date">Created: 2021-07-15 Thu 12:57</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

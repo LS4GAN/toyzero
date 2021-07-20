@@ -10,7 +10,7 @@
 //    -A input=depos.npz -A output=frames.npz \
 //    -A wires=wires-geometry.json.bz2 \
 //    -A resps=field-response.json.bz2 \
-//    -A noise="yes" \
+//    -A noisef=/path/to/noise/model/file \
 //    -c main-depos-sim-adc.jsonnet
 //
 // The 'noise' TLA is optional and defaults to "no".

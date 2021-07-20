@@ -111,7 +111,9 @@ local pg = import "pgraph.jsonnet";
     // The vol, daq, adc, lar likely comes from params.
     // The noisef should be a file name.
     // fixme: probably should be broken up...
-    apasim(anode, pirs, vol, daq, adc, lar, noisef=null, rnd=$.random()) : {
+    apasim(anode, pirs, vol, daq, adc, lar, noisef=null, tier='adc', rnd=$.random()) : {
+
+        local tagbase = if tier == 'adc' then 'orig' else 'volt',
 
         local apaid = anode.data.ident,
 
@@ -150,7 +152,7 @@ local pg = import "pgraph.jsonnet";
             name: 'Digitizer%d' % apaid,
             data : adc {
                 anode: wc.tn(anode),
-                frame_tag: "orig%d"%apaid,
+                frame_tag: "%s%d"%[tagbase, apaid],
             }
         }, nin=1, nout=1, uses=[anode]),
 
@@ -184,7 +186,7 @@ local pg = import "pgraph.jsonnet";
 
         local mid = if std.type(noisef) == "null" then [] else [noise],
 
-        local end = [digitizer],
+        local end = if tier == 'adc' then [digitizer] else [],
 
         pipeline: pg.pipeline(beg + mid + end),
     }.pipeline,
@@ -192,12 +194,12 @@ local pg = import "pgraph.jsonnet";
     local plugins = [
         "WireCellSio", "WireCellAux",
         "WireCellGen", "WireCellSigProc",
-        "WireCellApps", "WireCellPgraph"],
+        "WireCellApps", "WireCellPgraph", "WireCellTbb"],
     
 
-    main(graph) :: {
-        local app = {
-            type: 'Pgrapher',
+    main(graph, app) :: {
+        local appcfg = {
+            type: app,
             data: {
                 edges: pg.edges(graph)
             },
@@ -206,9 +208,9 @@ local pg = import "pgraph.jsonnet";
             type: "wire-cell",
             data: {
                 plugins: plugins,
-                apps: ["Pgrapher"],
+                apps: [appcfg.type]
             }
         },
-        seq: [cmdline] + pg.uses(graph) + [app],
+        seq: [cmdline] + pg.uses(graph) + [appcfg],
     }.seq
 }

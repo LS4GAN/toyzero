@@ -3,7 +3,7 @@
 #+setupfile: https://ls4gan.github.io/other/setup-page.org
 #+options: toc:t
 
-The toyzero package provides first steps toward [[https://ls4gan.github.io/][LS4GAN]].
+The toyzero package provides first steps toward [[https://ls4gan.github.io/][LS4GAN]].  See also [[file:next-steps.org]]
 
 * Goals
 :PROPERTIES:

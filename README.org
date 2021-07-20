@@ -145,6 +145,18 @@ you can do:
   $ snakemake -jall just_images
 #+end_example
 
+By default, the above does not retain intermediate data files from the
+"depos", "wires", "resp" and "frames" data tier files (see below for
+descriptions), only keeping "images".  To keep the intermediates you
+may run as:
+
+#+begin_example
+  $ snakemake -jall just_images --notemp
+#+end_example
+
+A one "event" run produce about 2MB of "images" and 360 MB if
+intermediates are kept.
+
 More information on the use of ~snakemake~ in toyzero is below and in
 sections [[Configuration]] and [[Snakemake]].
 

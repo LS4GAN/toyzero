@@ -53,7 +53,7 @@ rule get_resp_real:
     input:
         HTTP.remote(f'{wcdata_url}/{resps}.{wcdata_ext}', keep_local=True)
     output:
-        real_resps
+        temp(real_resps)
     run:
         shell("mkdir -p {datadir}")
         shell("cp {input} {output}")
@@ -62,7 +62,7 @@ rule gen_resp_fake:
     input:
         real_resps
     output:
-        fake_resps
+        temp(fake_resps)
     shell: '''
     wirecell-sigproc frzero -n 0 -o {output} {input}
     '''
@@ -89,7 +89,7 @@ rule get_wires:
     input:
         HTTP.remote(f'{wcdata_url}/{wires}.{wcdata_ext}', keep_local=True)
     output:
-        wires_file
+        temp(wires_file)
     run:
         shell("mkdir -p {datadir}")
         shell("cp {input} {output}")
@@ -141,7 +141,7 @@ rule gen_depos:
     params:
         p = gen_depos_cfg
     output:
-        depos_file
+        temp(depos_file)
     shell: '''
     wirecell-gen depo-lines \
     --seed {params.p[seed]} \
@@ -195,7 +195,7 @@ rule sim_frames:
         depos = depos_file,
         config = 'cfg/main-depos-sim-adc.jsonnet'
     output:
-        frames = domain_frames
+        frames = temp(domain_frames)
     shell: '''
     rm -f {output.frames}; 
     wire-cell \

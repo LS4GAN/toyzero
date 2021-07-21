@@ -22,9 +22,13 @@ seed = config.get("seed", "1,2,3,4")
 ntracks = config.get("ntracks", 10)
 nevents = config.get("nevents", 10)
 wcloglvl = config.get("wcloglvl", "info")
+
+tiers = config.get("tiers", ["noiseless"])
+
 # print(f"OUTDIR:{outdir}")
 # print(f"NEVENTS:{nevents}")
 # print(f"WCLOGLVL:{wcloglvl}")
+print(f"TIERS:{tiers}, {type(tiers)}")
 
 # The rest are hard wired for now
 wcdata_url = "https://github.com/WireCell/wire-cell-data/raw/master"
@@ -39,13 +43,20 @@ wcdata_ext = "json.bz2"
 resps = "dune-garfield-1d565"
 wires = "protodune-wires-larsoft-v4"
 
+# The data domains describe a universe.  For toyzero, they are
+# associated with a particular detector response.
+DOMAINS = ["fake", "real"]
+
+# The data tiers for frame or image
+TIERS = ["noiseless", "signal"]
+
 # some important file names
 real_resps    = f'{datadir}/resps/real-resps.{wcdata_ext}'
 fake_resps    = f'{datadir}/resps/fake-resps.{wcdata_ext}'
 domain_resps  = f'{datadir}/resps/{{domain}}-resps.{wcdata_ext}'
 wires_file    = f'{datadir}/wires/wires.{wcdata_ext}'
 depos_file    = f'{datadir}/depos/depos.npz'
-domain_frames = f'{datadir}/frames/{{domain}}-frames.npz'
+domain_frames = f'{datadir}/frames/{{tier}}/{{domain}}-frames.npz'
 
 # resp - prepare response files
 
@@ -167,15 +178,24 @@ rule all_depos:
 
 # frames
 
-rule sim_dots:
+def wct_cfg_file(w):
+    slugs = dict(signal="depos-sigproc",
+                 noiseless="depos-sim-adc")
+    slug = slugs[w.tier]
+    return f'cfg/main-{slug}.jsonnet'
+
+
+# note, passes bogus TLAs so don't use the genearted json!
+rule wct_dots:
     input:
-        config = 'cfg/main-depos-sim-adc.jsonnet'
+        config = wct_cfg_file
     output:
-        json = f'{plotdir}/sim-graph.json',
-        dot  = f'{plotdir}/sim-graph.dot',
-        png  = f'{plotdir}/sim-graph.png',
-        pdf  = f'{plotdir}/sim-graph.pdf'
+        json = temp(f'{plotdir}/dots/{{tier}}/cfg.json'),
+        dot  = temp(f'{plotdir}/dots/{{tier}}/dag.dot'),
+        png  = f'{plotdir}/dots/{{tier}}/dag.png',
+        pdf  = f'{plotdir}/dots/{{tier}}/dag.pdf'
     shell: '''
+    mkdir -p {plotdir}/dots/{wildcards.tier};
     wcsonnet \
     -P cfg \
     -A input=DEPOS-FILE \
@@ -183,17 +203,20 @@ rule sim_dots:
     -A wires=WIRES-FILE \
     -A resps=RESPS-FILE \
     {input.config} > {output.json};
-    wirecell-pgraph dotify --jpath=-1 {output.json} {output.dot} ;
+    wirecell-pgraph dotify --no-params --jpath=-1 {output.json} {output.dot} ;
     dot -Tpng -o {output.png} {output.dot} ;
     dot -Tpdf -o {output.pdf} {output.dot}
     '''
+rule all_dots:
+    input:
+        expand(rules.wct_dots.output, tier=tiers)
 
 rule sim_frames:
     input:
         wires = wires_file,
         resps = domain_resps,
         depos = depos_file,
-        config = 'cfg/main-depos-sim-adc.jsonnet'
+        config = wct_cfg_file
     output:
         frames = temp(domain_frames)
     shell: '''
@@ -216,7 +239,7 @@ rule plot_frames:
     input:
         domain_frames
     output:
-        f'{plotdir}/frames-{{domain}}-apa{{apa}}.{{ext}}'
+        f'{plotdir}/frames-{{tier}}-{{domain}}-apa{{apa}}.{{ext}}'
     params:
         p = gen_plot_frames
     shell:'''
@@ -224,9 +247,9 @@ rule plot_frames:
     '''
 rule plot_frames_hidpi:
     input:
-        f'{plotdir}/frames-{{domain}}-apa{{apa}}.pdf'
+        f'{plotdir}/frames-{{tier}}-{{domain}}-apa{{apa}}.pdf'
     output:
-        f'{plotdir}/hidpi/frames-{{domain}}-apa{{apa}}.png'
+        f'{plotdir}/hidpi/frames-{{tier}}-{{domain}}-apa{{apa}}.png'
     params:
 
     shell:'''
@@ -236,11 +259,13 @@ rule plot_frames_hidpi:
 
 rule all_frames:
     input:
-        expand(rules.sim_frames.output, domain=["real","fake"]),
+        expand(rules.sim_frames.output, domain=["real","fake"],
+               tier=tiers),
         expand(rules.plot_frames.output, domain=["real","fake"],
+               tier=tiers,
                ext=["png","pdf"], apa=list(range(6))),
         expand(rules.plot_frames_hidpi.output, domain=["real","fake"],
-               apa=[0])
+               tier=tiers, apa=[0])
 
 
 
@@ -255,7 +280,7 @@ rule all_frames:
 ## static data (ie, defined right here).  So, that is what we do.
 #
 split_outer_product = dict(
-    domain = ["protodune"],
+#    domain = ["protodune"],
     event  = list(range(nevents)),
     apa    = list(range(6)),
     plane  = ["U","V","W"],
@@ -265,11 +290,11 @@ rule split_images:
     input:
         domain_frames
     output:
-        expand(datadir+'/images/{{domain}}/protodune-orig-{event}-{apa}-{plane}.npz',
+        expand(datadir+'/images/{{tier}}/{{domain}}/protodune-orig-{event}-{apa}-{plane}.npz',
                **split_outer_product)
     shell: '''
     wirecell-util frame-split \
-    -f {datadir}/images/{wildcards.domain}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{planeletter}}.npz \
+    -f {datadir}/images/{wildcards.tier}/{wildcards.domain}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{planeletter}}.npz \
     {input}
     '''
 
@@ -278,16 +303,16 @@ def gen_title(w):
         dim='2D'
     else:
         dim='q1D'
-    return f'"{w.domain}/{dim}, event {w.event}, APA {w.apa}, {w.plane} plane"',
+    return f'"{w.tier} {w.domain}/{dim}, event {w.event}, APA {w.apa}, {w.plane} plane"',
 
 ## Note, we must match the input here by hand to the output above
 ## because the domain is not included in the expand above but is here.
 ## Above is 1->N, here is 1->1.
 rule plot_split_images:
     input:
-        datadir+'/images/{domain}/protodune-orig-{event}-{apa}-{plane}.npz',
+        datadir+'/images/{tier}/{domain}/protodune-orig-{event}-{apa}-{plane}.npz',
     output:
-        plotdir+'/images/{domain}/{cmap}/protodune-orig-{event}-{apa}-{plane}.{ext}'
+        plotdir+'/images/{tier}/{domain}/{cmap}/protodune-orig-{event}-{apa}-{plane}.{ext}'
     params:
         title = gen_title
     shell: '''
@@ -302,10 +327,12 @@ rule plot_split_images:
 ## note, list-of-list for the split_images rule
 rule all_images:
     input:
-        expand(rules.split_images.output, domain=["real","fake"]),
+        expand(rules.split_images.output,
+               domain=["real","fake"], tier=tiers),
         expand(
             rules.plot_split_images.output,
             domain = ["real","fake"],
+            tier = tiers,
             event  = [0], apa=[2], plane=["U"],
             ext    = ["png", "pdf", "svg"],
             cmap   = ["seismic", "Spectral", "terrain", "coolwarm", "viridis"],
@@ -313,7 +340,9 @@ rule all_images:
 
 rule just_images:
     input:
-        expand(rules.split_images.output, domain=["real","fake"]),
+        expand(rules.split_images.output,
+               domain=["real","fake"],
+               tier=tiers)
 
 rule all:
     input:

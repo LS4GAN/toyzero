@@ -291,6 +291,28 @@ The ~all_frames~ target generates "frame" data from depos by running the
 Wire-Cell simulation.  The "frame" file format is described elsewhere.
 For here, we treat it as a temporary.
 
+The simulation is internally structured as a DAG of components
+exchanging data flow as shown:
+
+#+ATTR_HTML: :width 90%
+[[file:plots/dots/depos-sim-adc/dag.png]]
+
+Frames come in different flavor depending on the final output data
+tier.  We name and describe them as:
+
+- noiseless :: these are integer ADC waveforms reflecting existence of
+  only ionization electrons and no electronics noise.  They are
+  bipolar on the induction planes "U" and "V and unipolar on
+  collection plane "W".  They have a fixed "baseline" at an ADC value
+  depending on the plane and are sparse (baseline-padded) at locations
+  away from any ionization.
+
+- signal :: these floating point measures of the original ionization
+  electrons after signal processing and noise filtering is applied to
+  signal and noise simulation.  The waveforms from all planes are
+  unipolar and give a measure of the original ionization distribution.
+  The waveforms have a "baseline" of 0.0 and are sparse
+  (baseline-padded) at locations away from any ionization.
 
 ** images
 :PROPERTIES:
@@ -308,8 +330,8 @@ match.  For example:
 protodune-orig-0-1-W (960, 6000)
 #+end_example
 
-These image arrays have shape ~(nchan, ntick)~.  That is each row is the
-waveform from one channel and has ~ntick=6000~ samples (3ms).  When
+These image arrays have shape ~(nchan, ntick)~.  That is, each row is
+the waveform from one channel and has ~ntick=6000~ samples (3ms).  When
 visualized with matplotlib's ~imshow()~ you will see channels as Y-axis,
 tics as X-axis.
 
@@ -318,6 +340,10 @@ This "W" file holds one array of 960 channels and 6000 sample time
 "W" (collection plane aka plane 2 counting from 0).  "U" and "V" are
 induction planes and each will have 800 channels and the
 contemporaneous 6000 ticks.
+
+Like frames above, images come in corresponding flavors.  See section
+[[frames]] for description.
+
 
 * Plotting
 :PROPERTIES:

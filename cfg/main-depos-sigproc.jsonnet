@@ -53,19 +53,32 @@ local sim(n) =
 local adcpermv = tz.adcpermv(params.adc);
 local nfsp(n) =
     pg.pipeline([
-        nf(anodes[n], robjs.fr, params.daq.nticks, params.daq.tick),
+        //nf(anodes[n], robjs.fr, params.daq.nticks, params.daq.tick),
         sp(anodes[n], robjs.fr, robjs.er, spfilt, adcpermv)]);
 
-local oneapa(n) = pg.pipeline([sim(n), nfsp(n)]);
+local outfile(n) = {
+    local l = std.split(output,"."),
+    ret:"%s-apa%d.%s"%[l[0],n,l[1]]
+}.ret;
+local oneapa(n) = {
+    local name = "gauss%d"%n,
+    local outf = outfile(n),
+    pipe: pg.pipeline([
+        sim(n), nfsp(n),
+        io.frame_save_npz(name, outf, digitize=false, tags=[name]),
+        io.frame_sink(name)])
+}.pipe;
 
 local pipes = [oneapa(n) for n in apaids];
 
-local frame_tags = ["gaus%d"%n for n in apaids];
-local frames = io.frame_save_npz("frames", output,
-                                 digitize = false, tags=frame_tags);
-local dump = io.frame_sink();
+// local frame_tags = ["gauss%d"%n for n in apaids];
+// local frames = io.frame_save_npz("frames", output,
+//                                  digitize = false, tags=frame_tags);
+// local dump = io.frame_sink();
+// local body = pg.fan.pipe('DepoSetFanout', pipes, 'FrameFanin',
+//                          outtags=frame_tags);
 
-local body = pg.fan.pipe('DepoSetFanout', pipes, 'FrameFanin');
-local full = pg.pipeline([depos, drifter, bagger, body, frames, dump]);
+local body = pg.fan.fanout('DepoSetFanout', pipes);
+local full = pg.pipeline([depos, drifter, bagger, body]);
 tz.main(full, app)
 

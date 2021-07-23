@@ -128,24 +128,28 @@ rule all_wires:
 def gen_depos_cfg(w):
     'Dig out the bounding box of the detector'
 
-    params_cmd = 'wcsonnet pgrapher/experiment/pdsp/simparams.jsonnet'
-    jtext = subprocess.check_output(params_cmd, shell=True)
-    jdat = json.loads(jtext)
-    bb = jdat['det']['bounds']
+    # params_cmd = 'wcsonnet pgrapher/experiment/pdsp/simparams.jsonnet'
+    # jtext = subprocess.check_output(params_cmd, shell=True)
+    # jdat = json.loads(jtext)
+    # bb = jdat['det']['bounds']
+    # p1 = bb['tail']
+    # p2 = bb['head']
+    # corn = list()
+    # diag = list()
+    # for l in "xyz":
+    #     c = p1[l]
+    #     dc = p2[l]-p1[l]
+    #     # warning, pretend we know WCT's SoU here....
+    #     corn.append(f'{c:.1f}*mm')
+    #     diag.append(f'{dc:.1f}*mm')
 
-    p1 = bb['tail']
-    p2 = bb['head']
-    corn = list()
-    diag = list()
-    for l in "xyz":
-        c = p1[l]
-        dc = p2[l]-p1[l]
-        # warning, pretend we know WCT's SoU here....
-        corn.append(f'{c:.1f}*mm')
-        diag.append(f'{dc:.1f}*mm')
+    # found by running once and looking at AnodePlane log msgs
+    diag = '16000.0*mm,6100.0*mm,7000.0*mm'
+    corn = '-8000.0*mm,0.0*mm,0.0*mm'
 
     return dict(tracks = ntracks, sets = nevents, seed = seed,
-                corn = ','.join(corn), diag = ','.join(diag))
+                corn = corn, diag = diag)
+                #corn = ','.join(corn), diag = ','.join(diag))
 
 rule gen_depos:
     input:

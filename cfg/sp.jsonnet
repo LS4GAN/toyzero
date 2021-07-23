@@ -75,7 +75,6 @@ function(anode, fieldresp, elecresp, spfilt, adcpermv, perchan=null) {
             mp2_roi_tag: 'mp2_roi%d' % apaid,
             
             isWrapped: false,
-            sparse: false,
             // process_planes: [0, 2],
         }
     }, nin=1, nout=1, uses=[anode, fieldresp, elecresp] + pcuses + spfilt),

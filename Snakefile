@@ -42,6 +42,8 @@ wcdata_ext = "json.bz2"
 ## to span some set of each.
 resps = "dune-garfield-1d565"
 wires = "protodune-wires-larsoft-v4"
+# a few places want a list of APA IDs
+apa_iota = list(range(6))
 
 # The data domains describe a universe.  For toyzero, they are
 # associated with a particular detector response.
@@ -56,7 +58,6 @@ fake_resps    = f'{datadir}/resps/fake-resps.{wcdata_ext}'
 domain_resps  = f'{datadir}/resps/{{domain}}-resps.{wcdata_ext}'
 wires_file    = f'{datadir}/wires/wires.{wcdata_ext}'
 depos_file    = f'{datadir}/depos/depos.npz'
-domain_frames = f'{datadir}/frames/{{tier}}/{{domain}}-frames.npz'
 
 # resp - prepare response files
 
@@ -199,7 +200,7 @@ rule wct_dots:
     wcsonnet \
     -P cfg \
     -A input=DEPOS-FILE \
-    -A output=FRAMES-FILE \
+    --tla-code taps='{{"orig":"frame-orig-.npz","gauss":"frame-gauss.npz"}}' \
     -A wires=WIRES-FILE \
     -A resps=RESPS-FILE \
     {input.config} > {output.json};
@@ -211,6 +212,19 @@ rule all_dots:
     input:
         expand(rules.wct_dots.output, tier=tiers)
 
+# this gives the pattern for one per-APA frame file.  The %d is
+# interpolated by wire-cell configuration.
+frames_pattern = f'{datadir}/frames/{{tier}}/{{domain}}-frames-apa%d.npz'
+frames_wildcard = f'{datadir}/frames/{{tier}}/{{domain}}-frames-apa{{apa}}.npz'
+
+def frame_taps(w):
+    if w.tier == "noiseless":
+        tap = "orig"
+    else:
+        tap = "gauss"
+    fp = frames_pattern.format(**dict(w))
+    return dict(tap=tap, pat=fp)
+
 rule sim_frames:
     input:
         wires = wires_file,
@@ -218,14 +232,16 @@ rule sim_frames:
         depos = depos_file,
         config = wct_cfg_file
     output:
-        frames = temp(domain_frames)
+        temp([frames_pattern%n for n in apa_iota])
+    params:
+        p = frame_taps
     shell: '''
-    rm -f {output.frames}; 
+    rm -f {output}; 
     wire-cell \
     -l stdout -L {config[wcloglvl]} \
     -P cfg \
     -A input={input.depos} \
-    -A output={output.frames} \
+    --tla-code 'taps={{"{params.p[tap]}":"{params.p[pat]}"}}' \
     -A wires={input.wires} \
     -A resps={input.resps} \
     -c {input.config}
@@ -233,18 +249,23 @@ rule sim_frames:
         
 def gen_plot_frames(w):
     i = int(w.apa)
-    return dict(chb=f'{i},{i+2560}')
+    if w.tier == "noiseless":
+        return dict(chb=f'{i},{i+2560}', tag="")
+    if w.tier == "signal":
+        tag = f"gauss{i}"
+        return dict(chb=f'0,2560', tag=tag)
 
 rule plot_frames:
     input:
-        domain_frames
+        frames_wildcard
     output:
         f'{plotdir}/frames-{{tier}}-{{domain}}-apa{{apa}}.{{ext}}'
     params:
         p = gen_plot_frames
     shell:'''
-    wirecell-gen plot-sim {input} {output} -p frames -b {params.p[chb]}
+    wirecell-gen plot-sim {input} {output} -p frames -b {params.p[chb]} --tag "{params.p[tag]}"
     '''
+
 rule plot_frames_hidpi:
     input:
         f'{plotdir}/frames-{{tier}}-{{domain}}-apa{{apa}}.pdf'
@@ -263,7 +284,7 @@ rule all_frames:
                tier=tiers),
         expand(rules.plot_frames.output, domain=["real","fake"],
                tier=tiers,
-               ext=["png","pdf"], apa=list(range(6))),
+               ext=["png","pdf"], apa=apa_iota),
         expand(rules.plot_frames_hidpi.output, domain=["real","fake"],
                tier=tiers, apa=[0])
 
@@ -282,13 +303,13 @@ rule all_frames:
 split_outer_product = dict(
 #    domain = ["protodune"],
     event  = list(range(nevents)),
-    apa    = list(range(6)),
+    apa    = apa_iota,
     plane  = ["U","V","W"],
 )
 
 rule split_images:
     input:
-        domain_frames
+        frames_wildcard
     output:
         expand(datadir+'/images/{{tier}}/{{domain}}/protodune-orig-{event}-{apa}-{plane}.npz',
                **split_outer_product)

@@ -116,7 +116,7 @@ local pg = import "pgraph.jsonnet";
     
 
     // A per anode configure node for simulating noise.
-    noisesim(anode, noisef, daq, csdb=null, rnd=$.random()) : {
+    noisesim(anode, noisef, daq, chstat=null, rnd=$.random()) : {
         local apaid = anode.data.ident,
         
         local noise_model = {
@@ -124,13 +124,13 @@ local pg = import "pgraph.jsonnet";
             name: "emperical-noise-model-%d" % apaid,
             data: {
                 anode: wc.tn(anode),
-                chanstat: if std.type(csdb) == "null" then "" else wc.tn(csdb),
+                chanstat: if std.type(chstat) == "null" then "" else wc.tn(chstat),
                 spectra_file: noisef,
                 nsamples: daq.nticks,
                 period: daq.tick,
                 wire_length_scale: 1.0*wc.cm, // optimization binning
             },
-            uses: [anode] + if std.type(csdb) == "null" then [] else [csdb],
+            uses: [anode] + if std.type(chstat) == "null" then [] else [chstat],
         },
         ret: pg.pnode({
             type: "AddNoise",
@@ -204,20 +204,18 @@ local pg = import "pgraph.jsonnet";
     // The tier can be 'adc' or something else if no digitizer.
     sim(anode, pirs, daq, adc, lar, noisef=null, tier='adc', rnd=$.random()) : {
 
-        // fixme: make configurable
-        local csdb = null,
+        local apaid = anode.data.ident,
 
         local beg = if std.type(lar) == "null" || std.type(pirs) == "null" then [] else [
             $.sigsim(anode, pirs, daq, lar, rnd)],
 
         local mid = if std.type(noisef) == "null" then [] else [
-            $.noisesim(anode, noisef, daq, rnd, csdb)],
+            $.noisesim(anode, noisef, daq, rnd=rnd)],
 
         local end = if tier == 'adc' then [$.digisim(anode, adc)] else [],
 
         pipeline: pg.pipeline(beg + mid + end),
     }.pipeline,
-
 
     local plugins = [
         "WireCellSio", "WireCellAux",

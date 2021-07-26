@@ -19,7 +19,7 @@ else
     --seed 1234 \
     --tracks 100 \
     --sets 1 \
-    --diagonal '16000.0*mm,6100.0*mm, 7000.0*mm' \
+    --diagonal '16000.0*mm,6100.0*mm,7000.0*mm' \
     --corner   '-8000.0*mm,0.0*mm,0.0*mm' \
     --output testit/depos.npz || exit
 fi
@@ -29,7 +29,7 @@ if [ -f testit/fake-frames-orig-apa0.npz ] ; then
 else
     wire-cell \
         -l stdout -L debug -P cfg\
-        -A input=depos.npz \
+        -A input=testit/depos.npz \
         --tla-code taps=$taps \
         -A wires=data/wires/wires.json.bz2  \
         -A resps=data/resps/fake-resps.json.bz2 \

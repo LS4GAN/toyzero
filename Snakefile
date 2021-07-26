@@ -23,12 +23,10 @@ ntracks = config.get("ntracks", 10)
 nevents = config.get("nevents", 10)
 wcloglvl = config.get("wcloglvl", "info")
 
-tiers = config.get("tiers", ["noiseless"])
-
-# print(f"OUTDIR:{outdir}")
-# print(f"NEVENTS:{nevents}")
-# print(f"WCLOGLVL:{wcloglvl}")
-print(f"TIERS:{tiers}, {type(tiers)}")
+# limit number of threads per wire-cell job
+threads = config.get("threads", 1)
+# single threaded uses Pgrapher, multi uses TbbFlow
+threading = "single" if threads == 1 else "multi"
 
 # The rest are hard wired for now
 wcdata_url = "https://github.com/WireCell/wire-cell-data/raw/master"
@@ -49,8 +47,10 @@ apa_iota = list(range(6))
 # associated with a particular detector response.
 DOMAINS = ["fake", "real"]
 
-# The data tiers for frame or image
-TIERS = ["noiseless", "signal"]
+# The data tiers for frame or image. We make all tiers in one job.
+# The 'orig' is the output of the simulation and 'gauss' is the output
+# of signal processing using the charge-preserving filters.
+TIERS = ["orig", "gauss"]
 
 # some important file names
 real_resps    = f'{datadir}/resps/real-resps.{wcdata_ext}'
@@ -58,6 +58,7 @@ fake_resps    = f'{datadir}/resps/fake-resps.{wcdata_ext}'
 domain_resps  = f'{datadir}/resps/{{domain}}-resps.{wcdata_ext}'
 wires_file    = f'{datadir}/wires/wires.{wcdata_ext}'
 depos_file    = f'{datadir}/depos/depos.npz'
+noise_file    = f'{datadir}/noise/protodune-noise-spectra-v1.{wcdata_ext}'
 
 # resp - prepare response files
 
@@ -78,6 +79,15 @@ rule gen_resp_fake:
     shell: '''
     wirecell-sigproc frzero -n 0 -o {output} {input}
     '''
+
+rule get_noisef:
+    input:
+        HTTP.remote(f'{wcdata_url}/protodune-noise-spectra-v1.{wcdata_ext}', keep_local=True)
+    output:
+        temp(noise_file)
+    run:
+        shell("mkdir -p {datadir}")
+        shell("cp {input} {output}")
 
 rule plot_resp:
     input:
@@ -125,44 +135,19 @@ rule all_wires:
 
 # depos - generate ionization point depositions
 
-def gen_depos_cfg(w):
-    'Dig out the bounding box of the detector'
-
-    # params_cmd = 'wcsonnet pgrapher/experiment/pdsp/simparams.jsonnet'
-    # jtext = subprocess.check_output(params_cmd, shell=True)
-    # jdat = json.loads(jtext)
-    # bb = jdat['det']['bounds']
-    # p1 = bb['tail']
-    # p2 = bb['head']
-    # corn = list()
-    # diag = list()
-    # for l in "xyz":
-    #     c = p1[l]
-    #     dc = p2[l]-p1[l]
-    #     # warning, pretend we know WCT's SoU here....
-    #     corn.append(f'{c:.1f}*mm')
-    #     diag.append(f'{dc:.1f}*mm')
-
-    # found by running once and looking at AnodePlane log msgs
-    diag = '16000.0*mm,6100.0*mm,7000.0*mm'
-    corn = '-8000.0*mm,0.0*mm,0.0*mm'
-
-    return dict(tracks = ntracks, sets = nevents, seed = seed,
-                corn = corn, diag = diag)
-                #corn = ','.join(corn), diag = ','.join(diag))
-
 rule gen_depos:
     input:
         wires_file
     params:
-        p = gen_depos_cfg
+        diag = '16000.0*mm,6100.0*mm,7000.0*mm',
+        corn = '-8000.0*mm,0.0*mm,0.0*mm'
     output:
         temp(depos_file)
     shell: '''
     wirecell-gen depo-lines \
-    --seed {params.p[seed]} \
-    --tracks {params.p[tracks]} --sets {params.p[sets]} \
-    --diagonal '{params.p[diag]}' --corner '{params.p[corn]}' \
+    --seed {seed} \
+    --tracks {tracks} --sets {sets} \
+    --diagonal '{diag}' --corner '{corn}' \
     --output {output}
     '''
 
@@ -183,24 +168,20 @@ rule all_depos:
 
 # frames
 
-def wct_cfg_file(w):
-    slugs = dict(signal="depos-sigproc",
-                 noiseless="depos-sim-adc")
-    slug = slugs[w.tier]
-    return f'cfg/main-{slug}.jsonnet'
+wct_cfg_file = 'cfg/main-sigproc.jsonnet'
 
-
-# note, passes bogus TLAs so don't use the genearted json!
+# note, we pass bogus TLAs so don't use the generated json for
+# anything real!
 rule wct_dots:
     input:
         config = wct_cfg_file
     output:
-        json = temp(f'{plotdir}/dots/{{tier}}/cfg.json'),
-        dot  = temp(f'{plotdir}/dots/{{tier}}/dag.dot'),
-        png  = f'{plotdir}/dots/{{tier}}/dag.png',
-        pdf  = f'{plotdir}/dots/{{tier}}/dag.pdf'
+        json = temp(f'{plotdir}/dots/cfg.json'),
+        dot  = temp(f'{plotdir}/dots/dag.dot'),
+        png  = f'{plotdir}/dots/dag.png',
+        pdf  = f'{plotdir}/dots/dag.pdf'
     shell: '''
-    mkdir -p {plotdir}/dots/{wildcards.tier};
+    mkdir -p {plotdir}/dots;
     wcsonnet \
     -P cfg \
     -A input=DEPOS-FILE \
@@ -214,50 +195,59 @@ rule wct_dots:
     '''
 rule all_dots:
     input:
-        expand(rules.wct_dots.output, tier=tiers)
+        rules.wct_dots.output
 
 # this gives the pattern for one per-APA frame file.  The %d is
 # interpolated by wire-cell configuration.
-frames_pattern = f'{datadir}/frames/{{tier}}/{{domain}}-frames-apa%d.npz'
+
 frames_wildcard = f'{datadir}/frames/{{tier}}/{{domain}}-frames-apa{{apa}}.npz'
 
 def frame_taps(w):
-    if w.tier == "noiseless":
-        tap = "orig"
-    else:
-        tap = "gauss"
-    fp = frames_pattern.format(**dict(w))
-    return dict(tap=tap, pat=fp)
+    frames_pattern = f'{datadir}/frames/{{tier}}/{{domain}}-frames-apa%d.npz'
+    taps = list()
+    for tier in ('orig', 'gauss'):
+        d = dict(w)
+        d["tier"] = tier
+        taps.append('"%s":"%s"' % (tier, frames_pattern.format(**d)))
+
+    taps = ",".join(taps)
+    return '{%s}'%taps
+
+def frame_files():
+    frames_pattern = datadir + '/frames/{tier}/{{domain}}-frames-apa{apaid}.npz'
+    return expand(frames_pattern, tier=TIERS, apaid = apa_iota)
 
 rule sim_frames:
     input:
         wires = wires_file,
         resps = domain_resps,
         depos = depos_file,
-        config = wct_cfg_file
+        config = wct_cfg_file,
+        noise = noise_file
     output:
-        temp([frames_pattern%n for n in apa_iota])
+        frame_files()
     params:
-        p = frame_taps
+        taps = frame_taps
     shell: '''
     rm -f {output}; 
+    mkdir -p {datadir}/frames/orig {datadir}/frames/gauss
     wire-cell \
+    --threads 4 \
+    -A thread={threading} \
     -l stdout -L {config[wcloglvl]} \
     -P cfg \
     -A input={input.depos} \
-    --tla-code 'taps={{"{params.p[tap]}":"{params.p[pat]}"}}' \
+    --tla-code 'taps={params.taps}' \
     -A wires={input.wires} \
     -A resps={input.resps} \
+    -A noisef={input.noise} \
     -c {input.config}
     '''
         
 def gen_plot_frames(w):
     i = int(w.apa)
-    if w.tier == "noiseless":
-        return dict(chb=f'{i},{i+2560}', tag="")
-    if w.tier == "signal":
-        tag = f"gauss{i}"
-        return dict(chb=f'0,2560', tag=tag)
+    tag = f"{w.tier}{i}"
+    return dict(chb=f'0,2560', tag=tag)
 
 rule plot_frames:
     input:
@@ -284,13 +274,15 @@ rule plot_frames_hidpi:
 
 rule all_frames:
     input:
-        expand(rules.sim_frames.output, domain=["real","fake"],
-               tier=tiers),
+        rules.all_resp.input,
+        rules.all_wires.input,
+        rules.all_depos.input,
+        expand(rules.sim_frames.output, domain=["real","fake"]),
         expand(rules.plot_frames.output, domain=["real","fake"],
-               tier=tiers,
+               tier=TIERS,
                ext=["png","pdf"], apa=apa_iota),
         expand(rules.plot_frames_hidpi.output, domain=["real","fake"],
-               tier=tiers, apa=[0])
+               tier=TIERS, apa=[0])
 
 
 
@@ -305,21 +297,21 @@ rule all_frames:
 ## static data (ie, defined right here).  So, that is what we do.
 #
 split_outer_product = dict(
-#    domain = ["protodune"],
     event  = list(range(nevents)),
-    apa    = apa_iota,
     plane  = ["U","V","W"],
 )
+
+# frames_wildcard = f'{datadir}/frames/{{tier}}/{{domain}}-frames-apa{{apa}}.npz'
 
 rule split_images:
     input:
         frames_wildcard
     output:
-        expand(datadir+'/images/{{tier}}/{{domain}}/protodune-orig-{event}-{apa}-{plane}.npz',
+        expand(datadir+'/images/{{tier}}/{{domain}}/protodune-{{tier}}{{apa}}-{event}-{plane}.npz',
                **split_outer_product)
     shell: '''
     wirecell-util frame-split \
-    -f {datadir}/images/{wildcards.tier}/{wildcards.domain}/{{detector}}-{{tag}}-{{index}}-{{anodeid}}-{{planeletter}}.npz \
+    -f {datadir}/images/{wildcards.tier}/{wildcards.domain}/{{detector}}-{{tag}}-{{index}}-{{planeletter}}.npz \
     {input}
     '''
 
@@ -335,9 +327,9 @@ def gen_title(w):
 ## Above is 1->N, here is 1->1.
 rule plot_split_images:
     input:
-        datadir+'/images/{tier}/{domain}/protodune-orig-{event}-{apa}-{plane}.npz',
+        datadir+'/images/{tier}/{domain}/protodune-{tier}{apa}-{event}-{plane}.npz',
     output:
-        plotdir+'/images/{tier}/{domain}/{cmap}/protodune-orig-{event}-{apa}-{plane}.{ext}'
+        plotdir+'/images/{tier}/{domain}/{cmap}/protodune-{tier}{apa}-{event}-{plane}.{ext}'
     params:
         title = gen_title
     shell: '''
@@ -349,25 +341,27 @@ rule plot_split_images:
     --zoom 300:500,0:1000 --mask 0 --vmin -50 --vmax 50 \
     --dpi 600 --baseline=median -o {output} {input}
     '''
-## note, list-of-list for the split_images rule
-rule all_images:
-    input:
-        expand(rules.split_images.output,
-               domain=["real","fake"], tier=tiers),
-        expand(
-            rules.plot_split_images.output,
-            domain = ["real","fake"],
-            tier = tiers,
-            event  = [0], apa=[2], plane=["U"],
-            ext    = ["png", "pdf", "svg"],
-            cmap   = ["seismic", "Spectral", "terrain", "coolwarm", "viridis"],
-        )
 
 rule just_images:
     input:
+        rules.all_frames.input,
         expand(rules.split_images.output,
                domain=["real","fake"],
-               tier=tiers)
+               tier=TIERS, apa=apa_iota)
+
+## note, list-of-list for the split_images rule
+rule all_images:
+    input:
+        rules.just_images.input,
+        expand(
+            rules.plot_split_images.output,
+            domain = ["real","fake"],
+            tier = TIERS,
+            event  = [0], apa=[0], plane=["U","V","W"],
+            ext    = ["png", "pdf", "svg"],
+            cmap   = ["seismic", "viridis"],
+        )
+
 
 rule all:
     input:

@@ -146,8 +146,8 @@ rule gen_depos:
     shell: '''
     wirecell-gen depo-lines \
     --seed {seed} \
-    --tracks {tracks} --sets {sets} \
-    --diagonal '{diag}' --corner '{corn}' \
+    --tracks {ntracks} --sets {nevents} \
+    --diagonal '{params.diag}' --corner '{params.corn}' \
     --output {output}
     '''
 
@@ -168,7 +168,7 @@ rule all_depos:
 
 # frames
 
-wct_cfg_file = 'cfg/main-sigproc.jsonnet'
+wct_cfg_file = 'cfg/main-depos-sigproc.jsonnet'
 
 # note, we pass bogus TLAs so don't use the generated json for
 # anything real!

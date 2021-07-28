@@ -185,9 +185,11 @@ rule wct_dots:
     wcsonnet \
     -P cfg \
     -A input=DEPOS-FILE \
-    --tla-code taps='{{"orig":"frame-orig-.npz","gauss":"frame-gauss.npz"}}' \
+    --tla-code taps='{{"orig":"frame-orig.npz","gauss":"frame-gauss.npz"}}' \
     -A wires=WIRES-FILE \
-    -A resps=RESPS-FILE \
+    -A resps_sim=RESPS-SIM-FILE \
+    -A resps_sigproc=RESPS-SIGPROC-FILE \
+    -A noisef=NOISE-FILE \
     {input.config} > {output.json};
     wirecell-pgraph dotify --no-params --jpath=-1 {output.json} {output.dot} ;
     dot -Tpng -o {output.png} {output.dot} ;
@@ -220,17 +222,19 @@ def frame_files():
 rule sim_frames:
     input:
         wires = wires_file,
-        resps = domain_resps,
+        resps_sim = domain_resps,
+        resps_sigproc = fake_resps,
         depos = depos_file,
         config = wct_cfg_file,
         noise = noise_file
     output:
-        frame_files()
+        temp(frame_files())
     params:
         taps = frame_taps
     shell: '''
     rm -f {output}; 
-    mkdir -p {datadir}/frames/orig {datadir}/frames/gauss
+    mkdir -p {datadir}/frames/orig;
+    mkdir -p {datadir}/frames/gauss;
     wire-cell \
     --threads 4 \
     -A thread={threading} \
@@ -239,7 +243,8 @@ rule sim_frames:
     -A input={input.depos} \
     --tla-code 'taps={params.taps}' \
     -A wires={input.wires} \
-    -A resps={input.resps} \
+    -A resps_sim={input.resps_sim} \
+    -A resps_sigproc={input.resps_sigproc} \
     -A noisef={input.noise} \
     -c {input.config}
     '''
@@ -272,12 +277,17 @@ rule plot_frames_hidpi:
     '''
 
 
+rule just_frames:
+    input:
+        expand(rules.sim_frames.output, domain=["real","fake"]),
+        
+
 rule all_frames:
     input:
         rules.all_resp.input,
         rules.all_wires.input,
         rules.all_depos.input,
-        expand(rules.sim_frames.output, domain=["real","fake"]),
+        rules.just_frames.input,
         expand(rules.plot_frames.output, domain=["real","fake"],
                tier=TIERS,
                ext=["png","pdf"], apa=apa_iota),
@@ -344,10 +354,10 @@ rule plot_split_images:
 
 rule just_images:
     input:
-        rules.all_frames.input,
+        rules.just_frames.input,
         expand(rules.split_images.output,
                domain=["real","fake"],
-               tier=TIERS, apa=apa_iota)
+               tier=["gauss"], apa=apa_iota)
 
 ## note, list-of-list for the split_images rule
 rule all_images:

@@ -15,6 +15,8 @@
 //    -A taps={...see below...} \
 //    -A wires=wires-geometry.json.bz2 \
 //    -A resps=field-response.json.bz2 \
+//    -A resps_sim=field-response-for-sim.json.bz2 \
+//    -A resps_sigproc=field-response-for-sigproc.json.bz2 \
 //    -A noisef=/path/to/noise/model/file \
 //    -A thread=[single|multi] \
 //    -c main-depos-sim-adc.jsonnet
@@ -45,7 +47,7 @@ local params = import "pgrapher/experiment/pdsp/simparams.jsonnet";
 local spfilt = import "pgrapher/experiment/pdsp/sp-filters.jsonnet";
 local chndb = import "pdsp_chndb.jsonnet";
 
-function(input, taps, wires, resps, noisef=null, thread='single')
+function(input, taps, wires, resps_sim, resps_sigproc, noisef=null, thread='single')
     local app = if thread == 'single'
                 then 'Pgrapher'
                 else 'TbbFlow';
@@ -58,7 +60,8 @@ function(input, taps, wires, resps, noisef=null, thread='single')
 
     local apaids = std.range(0, std.length(anodes)-1);
 
-    local robjs = tz.responses(resps, params.elec, params.daq);
+    local robjs_sim = tz.responses(resps_sim, params.elec, params.daq);
+    local robjs_sigproc = tz.responses(resps_sigproc, params.elec, params.daq);
 
     local random = tz.random(seeds);
 
@@ -66,7 +69,7 @@ function(input, taps, wires, resps, noisef=null, thread='single')
     local bagger = tz.bagger(params.daq);
 
     local chndb_perfect(n) =
-        chndb.perfect(anodes[n], robjs.fr,
+        chndb.perfect(anodes[n], robjs_sim.fr,
                       params.daq.nticks,
                       params.daq.tick);
 
@@ -78,7 +81,7 @@ function(input, taps, wires, resps, noisef=null, thread='single')
     local sim(n) = [
         local anode = anodes[n];
         tz.sim(anode,               // kitchen
-               robjs.pirs,          // sink
+               robjs_sim.pirs,      // sink
                params.daq,
                params.adc,
                params.lar,
@@ -89,10 +92,10 @@ function(input, taps, wires, resps, noisef=null, thread='single')
 
     local adcpermv = tz.adcpermv(params.adc);
     local nfsp(n) = [
-        nf(anodes[n], robjs.fr, chndb_perfect(n),
+        nf(anodes[n], robjs_sigproc.fr, chndb_perfect(n),
            params.daq.nticks, params.daq.tick),
     ] + tap_out("raw", n) + [
-        sp(anodes[n], robjs.fr, robjs.er, spfilt, adcpermv)
+        sp(anodes[n], robjs_sigproc.fr, robjs_sigproc.er, spfilt, adcpermv)
     ] + tap_out("gauss", n);
 
     local oneapa(n) = pg.pipeline(sim(n) + nfsp(n));

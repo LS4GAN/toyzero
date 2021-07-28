@@ -1,6 +1,6 @@
 local wc = import "wirecell.jsonnet";
 local pg = import "pgraph.jsonnet";
-
+local ut = import "utils.jsonnet";
 
 // define general object for toyzero
 
@@ -26,6 +26,7 @@ local pg = import "pgraph.jsonnet";
 
     field_response(filename) :: {
         type: "FieldResponse",
+        name: filename,
         data: { filename: filename }
     },
 

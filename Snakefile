@@ -328,12 +328,38 @@ rule split_images:
     {input}
     '''
 
-def gen_title(w):
+def plot_split_params(w):
     if w.domain == 'real':
         dim='2D'
     else:
         dim='q1D'
-    return f'"{w.tier} {w.domain}/{dim}, event {w.event}, APA {w.apa}, {w.plane} plane"',
+
+    if w.tier == "orig":
+        ztitle='ADC (baseline subtracted)'
+        vmin=-50
+        vmax=50
+        baseline="median"
+    else:
+        ztitle='Signal (ionization electrons)'
+        vmin=0
+        vmax=5000
+        baseline="0"
+
+    blerg="0"
+    if int(w.zoomlevel) == 2:
+        blerg=""
+
+    if w.plane == "U":
+        zoom=f'0:80{blerg},0:400{blerg}'
+    elif w.plane == "V":
+        zoom=f'0:80{blerg},0:400{blerg}'
+    elif w.plane == "W":
+        zoom=f'0:96{blerg},0:400{blerg}'
+
+    title=f'{w.tier} {w.domain}/{dim}, event {w.event}, APA {w.apa}, {w.plane} plane'
+    return locals()
+
+
 
 ## Note, we must match the input here by hand to the output above
 ## because the domain is not included in the expand above but is here.
@@ -342,17 +368,19 @@ rule plot_split_images:
     input:
         datadir+'/images/{tier}/{domain}/protodune-{tier}{apa}-{event}-{plane}.npz',
     output:
-        plotdir+'/images/{tier}/{domain}/{cmap}/protodune-{tier}{apa}-{event}-{plane}.{ext}'
+        plotdir+'/images/{tier}/{domain}/{cmap}/protodune-{tier}{apa}-{event}-{plane}-zoom{zoomlevel}.{ext}'
     params:
-        title = gen_title
+        p = plot_split_params
     shell: '''
     wirecell-util npz-to-img --cmap {wildcards.cmap} \
-    --title {params.title} \
+    --title '{params.p[title]}' \
     --xtitle 'Relative ticks number' \
     --ytitle 'Relative channel number' \
-    --ztitle 'ADC (baseline subtracted)' \
-    --zoom 300:500,0:1000 --mask 0 --vmin -50 --vmax 50 \
-    --dpi 600 --baseline=median -o {output} {input}
+    --ztitle '{params.p[ztitle]}' \
+    --zoom '{params.p[zoom]}' \
+    --vmin '{params.p[vmin]}' --vmax '{params.p[vmax]}' \
+    --mask 0 \
+    --dpi 600 --baseline='{params.p[baseline]}' -o {output} {input}
     '''
 
 rule just_images:
@@ -371,8 +399,9 @@ rule all_images:
             domain = ["real","fake"],
             tier = TIERS,
             event  = [0], apa=[0], plane=["U","V","W"],
-            ext    = ["png", "pdf", "svg"],
+            ext    = ["png"], # , "pdf", "svg"],
             cmap   = ["seismic", "viridis"],
+            zoomlevel=[1, 2],
         )
 
 

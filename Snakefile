@@ -19,14 +19,15 @@ datadir = os.path.abspath(os.path.join(outdir, datadir))
 plotdir = os.path.abspath(os.path.join(outdir, plotdir))
     
 seed = config.get("seed", "1,2,3,4")
-ntracks = config.get("ntracks", 10)
-nevents = config.get("nevents", 10)
+ntracks = int(config.get("ntracks", 10))
+nevents = int(config.get("nevents", 10))
 wcloglvl = config.get("wcloglvl", "info")
 
 # limit number of threads per wire-cell job
-threads = config.get("threads", 1)
+wct_threads = int(config.get("threads", 1))
 # single threaded uses Pgrapher, multi uses TbbFlow
-threading = "single" if threads == 1 else "multi"
+wct_threading = "single" if wct_threads == 1 else "multi"
+print(f'WCT THREADS {wct_threads} ({wct_threading})')
 
 # The rest are hard wired for now
 wcdata_url = "https://github.com/WireCell/wire-cell-data/raw/master"
@@ -233,11 +234,9 @@ rule sim_frames:
         taps = frame_taps
     shell: '''
     rm -f {output}; 
-    mkdir -p {datadir}/frames/orig;
-    mkdir -p {datadir}/frames/gauss;
     wire-cell \
-    --threads 4 \
-    -A thread={threading} \
+    --threads {wct_threads} \
+    -A thread={wct_threading} \
     -l stdout -L {config[wcloglvl]} \
     -P cfg \
     -A input={input.depos} \
@@ -249,6 +248,10 @@ rule sim_frames:
     -c {input.config}
     '''
         
+    ## remove to check WCT makes output directories
+    # mkdir -p {datadir}/frames/orig;
+    # mkdir -p {datadir}/frames/gauss;
+
 def gen_plot_frames(w):
     i = int(w.apa)
     tag = f"{w.tier}{i}"

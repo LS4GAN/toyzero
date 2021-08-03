@@ -218,6 +218,28 @@ local ut = import "utils.jsonnet";
         pipeline: pg.pipeline(beg + mid + end),
     }.pipeline,
 
+
+    // Return a DepoSplat node
+    splat(anode, daq, lar) :: pg.pnode({
+        type: "DepoSplat",
+        name: "splat%d"%anode.data.ident,
+        data: {
+            tag: "splat",
+            anode: wc.tn(anode),
+            continuous: false,
+            fixed: true,
+            drift_speed: lar.drift_speed,
+            readout_time: daq.nticks*daq.tick, 
+            start_time: 0,
+            tick: daq.tick,
+            nsigma: 3,
+        }
+    }, nin=1, nout=1, uses=[anode]),
+
+
+
+    // top-level stuff
+
     local plugins = [
         "WireCellSio", "WireCellAux",
         "WireCellGen", "WireCellSigProc",

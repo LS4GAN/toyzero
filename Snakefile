@@ -1,7 +1,7 @@
 #!/usr/bin/env snakemake
 
-import json
 import os
+import json
 from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
 HTTP = HTTPRemoteProvider()
 
@@ -51,7 +51,8 @@ DOMAINS = ["fake", "real"]
 # The data tiers for frame or image. We make all tiers in one job.
 # The 'orig' is the output of the simulation and 'gauss' is the output
 # of signal processing using the charge-preserving filters.
-TIERS = ["orig", "gauss"]
+SIM_TIERS = ["orig", "gauss"]
+TIERS = SIM_TIERS + ["splat"]
 
 # some important file names
 real_resps    = f'{datadir}/resps/real-resps.{wcdata_ext}'
@@ -169,13 +170,15 @@ rule all_depos:
 
 # frames
 
-wct_cfg_file = 'cfg/main-depos-sigproc.jsonnet'
+
+wct_sigproc_cfg = 'cfg/main-depos-sigproc.jsonnet'
+wct_splat_cfg = 'cfg/main-depos-splat.jsonnet'
 
 # note, we pass bogus TLAs so don't use the generated json for
 # anything real!
 rule wct_dots:
     input:
-        config = wct_cfg_file
+        config = wct_sigproc_cfg
     output:
         json = temp(f'{plotdir}/dots/cfg.json'),
         dot  = temp(f'{plotdir}/dots/dag.dot'),
@@ -203,10 +206,10 @@ rule all_dots:
 # this gives the pattern for one per-APA frame file.  The %d is
 # interpolated by wire-cell configuration.
 
-frames_wildcard = f'{datadir}/frames/{{tier}}/{{domain}}-frames-apa{{apa}}.npz'
+frames_wildcard = f'{datadir}/frames/{{tier}}/{{sim_domain}}-{{sigproc_domain}}-frames-apa{{apa}}.npz'
 
 def frame_taps(w):
-    frames_pattern = f'{datadir}/frames/{{tier}}/{{domain}}-frames-apa%d.npz'
+    frames_pattern = f'{datadir}/frames/{{tier}}/{{sim_domain}}-{{sigproc_domain}}-frames-apa%d.npz'
     taps = list()
     for tier in ('orig', 'gauss'):
         d = dict(w)
@@ -216,20 +219,20 @@ def frame_taps(w):
     taps = ",".join(taps)
     return '{%s}'%taps
 
-def frame_files():
-    frames_pattern = datadir + '/frames/{tier}/{{domain}}-frames-apa{apaid}.npz'
-    return expand(frames_pattern, tier=TIERS, apaid = apa_iota)
+def sim_frame_files():
+    frames_pattern = datadir + '/frames/{tier}/{{sim_domain}}-{{sigproc_domain}}-frames-apa{apaid}.npz'
+    return expand(frames_pattern, tier=SIM_TIERS, apaid = apa_iota)
 
 rule sim_frames:
     input:
         wires = wires_file,
-        resps_sim = domain_resps,
-        resps_sigproc = fake_resps,
+        resps_sim = f'{datadir}/resps/{{sim_domain}}-resps.{wcdata_ext}',
+        resps_sigproc = f'{datadir}/resps/{{sigproc_domain}}-resps.{wcdata_ext}',
         depos = depos_file,
-        config = wct_cfg_file,
+        config = wct_sigproc_cfg,
         noise = noise_file
     output:
-        temp(frame_files())
+        temp(sim_frame_files())
     params:
         taps = frame_taps
     shell: '''
@@ -248,9 +251,30 @@ rule sim_frames:
     -c {input.config}
     '''
         
-    ## remove to check WCT makes output directories
-    # mkdir -p {datadir}/frames/orig;
-    # mkdir -p {datadir}/frames/gauss;
+
+# like sim_frames but we use DepoSplat instead of sim+sigproc.
+rule splat_frames:
+    input:
+        wires = wires_file,
+        depos = depos_file,
+        config = wct_splat_cfg
+    output:
+        temp([f'{datadir}/frames/splat/splat-frames-apa{apa}.npz' for apa in apa_iota])
+    params:
+        taps = f'{{"splat":"{datadir}/frames/splat/splat-frames-apa%d.npz"}}'
+    shell: '''
+    rm -f {output}; 
+    wire-cell \
+    --threads {wct_threads} \
+    -A thread={wct_threading} \
+    -l stdout -L {config[wcloglvl]} \
+    -P cfg \
+    -A input={input.depos} \
+    --tla-code 'taps={params.taps}' \
+    -A wires={input.wires} \
+    -c  {input.config}
+    '''
+
 
 def gen_plot_frames(w):
     i = int(w.apa)
@@ -261,28 +285,50 @@ rule plot_frames:
     input:
         frames_wildcard
     output:
-        f'{plotdir}/frames-{{tier}}-{{domain}}-apa{{apa}}.{{ext}}'
+        f'{plotdir}/frames/{{tier}}/{{sim_domain}}-{{sigproc_domain}}-apa{{apa}}.{{ext}}'
     params:
         p = gen_plot_frames
     shell:'''
     wirecell-gen plot-sim {input} {output} -p frames -b {params.p[chb]} --tag "{params.p[tag]}"
     '''
 
+rule plot_splat_frames:
+    input:
+        f'{datadir}/frames/splat/splat-frames-apa{{apa}}.npz'
+    output:
+        f'{plotdir}/frames/splat/splat-apa{{apa}}.{{ext}}'
+    shell:'''
+    wirecell-gen plot-sim {input} {output} -p frames -b 0,2560 --tag splat{wildcards.apa}"
+    '''
+
 rule plot_frames_hidpi:
     input:
-        f'{plotdir}/frames-{{tier}}-{{domain}}-apa{{apa}}.pdf'
+        f'{plotdir}/frames-{{tier}}-{{sim_domain}}-{{sigproc_domain}}-apa{{apa}}.pdf'
     output:
-        f'{plotdir}/hidpi/frames-{{tier}}-{{domain}}-apa{{apa}}.png'
-    params:
+        f'{plotdir}/hidpi/frames-{{tier}}-{{sim_domain}}-{{sigproc_domain}}-apa{{apa}}.png'
 
     shell:'''
     pdftoppm -rx 600 -ry 600 {input} | pnmtopng > {output}
     '''
 
 
+rule just_splat_frames:
+    input:
+        rules.splat_frames.output
+
+rule all_splat_frames:
+    input:
+        rules.just_splat_frames.input,        
+        expand(rules.plot_splat_frames.output,
+               ext=["png","pdf"], apa=apa_iota)
+    
+
 rule just_frames:
     input:
-        expand(rules.sim_frames.output, domain=["real","fake"]),
+        expand(rules.sim_frames.output,
+               sim_domain=["real","fake"],
+               sigproc_domain=["real","fake"],
+               ),
         
 
 rule all_frames:
@@ -291,11 +337,16 @@ rule all_frames:
         rules.all_wires.input,
         rules.all_depos.input,
         rules.just_frames.input,
-        expand(rules.plot_frames.output, domain=["real","fake"],
-               tier=TIERS,
+        expand(rules.plot_frames.output,
+               sim_domain=["real","fake"],
+               sigproc_domain=["real","fake"],
+               tier=SIM_TIERS,
                ext=["png","pdf"], apa=apa_iota),
-        expand(rules.plot_frames_hidpi.output, domain=["real","fake"],
-               tier=TIERS, apa=[0])
+
+        # expand(rules.plot_frames_hidpi.output,
+        #        sim_domain=["real","fake"],
+        #        sigproc_domain=["real","fake"],
+        #        tier=TIERS, apa=[0])
 
 
 
@@ -316,23 +367,49 @@ split_outer_product = dict(
 
 # frames_wildcard = f'{datadir}/frames/{{tier}}/{{domain}}-frames-apa{{apa}}.npz'
 
+# this pattern is formatted inside wirecell-util frame-split.
+split_array_pattern = '{detector}-{tag}-{index}-{planeletter}'
+
+sigproc_rebin = 4
+def rebin_number(w):
+    if w.tier == "orig":
+        return 0;
+    return sigproc_rebin
+
 rule split_images:
     input:
         frames_wildcard
     output:
-        expand(datadir+'/images/{{tier}}/{{domain}}/protodune-{{tier}}{{apa}}-{event}-{plane}.npz',
+        expand(datadir+'/images/{{tier}}/{{sim_domain}}-{{sigproc_domain}}/protodune-{{tier}}{{apa}}-{event}-{plane}.npz',
                **split_outer_product)
-    shell: '''
-    wirecell-util frame-split \
-    -f {datadir}/images/{wildcards.tier}/{wildcards.domain}/{{detector}}-{{tag}}-{{index}}-{{planeletter}}.npz \
-    {input}
-    '''
+    params:
+        outpath = datadir+'/images/{tier}/{sim_domain}-{sigproc_domain}',
+        mdpath = 'metadata-{apa}.json',
+        rebin = rebin_number
+    run:
+        if not os.path.exists(params.outpath):
+            os.makedirs(params.outpath)
+        mdpath = os.path.join(params.outpath, params.mdpath)
+        with open(mdpath, "w") as fp:
+            fp.write(json.dumps(dict(wildcards), indent=4))
+        shell('wirecell-util frame-split -r {params.rebin} -m {mdpath} -a {params.outpath}/{split_array_pattern} {input}')
+
 
 def plot_split_params(w):
-    if w.domain == 'real':
-        dim='2D'
+    if w.tier == 'splat':
+        dim="splat"
+    elif w.sim_domain == 'real':
+        dim='sim:2D'
     else:
-        dim='q1D'
+        dim='sim:q1D'
+
+    if w.tier == "gauss":
+        # only one response is relevant to ADC tier
+        # signals may have a different response used in decon.
+        if w.sigproc_domain == 'real':
+            dim+='/SP:2D'
+        else:
+            dim+='/SP:q1D'
 
     if w.tier == "orig":
         ztitle='ADC (baseline subtracted)'
@@ -342,21 +419,23 @@ def plot_split_params(w):
     else:
         ztitle='Signal (ionization electrons)'
         vmin=0
-        vmax=5000
+        vmax=20000
         baseline="0"
 
-    blerg="0"
-    if int(w.zoomlevel) == 2:
-        blerg=""
+    # we make 2 zoom levels.  1 is full, 2 is something less.
+    factor = 2
+    if int(w.zoomlevel) == 1:
+        factor = 10
+    if w.plane == "W":
+        chanmax=96*factor
+    else:
+        chanmax=80*factor
+    tickmax=400*factor
+    if w.tier != "orig":
+        tickmax = tickmax // sigproc_rebin
+    zoom=f'0:{chanmax},0:{tickmax}'
 
-    if w.plane == "U":
-        zoom=f'0:80{blerg},0:400{blerg}'
-    elif w.plane == "V":
-        zoom=f'0:80{blerg},0:400{blerg}'
-    elif w.plane == "W":
-        zoom=f'0:96{blerg},0:400{blerg}'
-
-    title=f'{w.tier} {w.domain}/{dim}, event {w.event}, APA {w.apa}, {w.plane} plane'
+    title=f'{w.tier} {dim}, event {w.event}, APA {w.apa}, {w.plane} plane'
     return locals()
 
 
@@ -366,9 +445,9 @@ def plot_split_params(w):
 ## Above is 1->N, here is 1->1.
 rule plot_split_images:
     input:
-        datadir+'/images/{tier}/{domain}/protodune-{tier}{apa}-{event}-{plane}.npz',
+        datadir+'/images/{tier}/{sim_domain}-{sigproc_domain}/protodune-{tier}{apa}-{event}-{plane}.npz',
     output:
-        plotdir+'/images/{tier}/{domain}/{cmap}/protodune-{tier}{apa}-{event}-{plane}-zoom{zoomlevel}.{ext}'
+        plotdir+'/images/{tier}/{sim_domain}-{sigproc_domain}/{cmap}/protodune-{tier}{apa}-{event}-{plane}-zoom{zoomlevel}.{ext}'
     params:
         p = plot_split_params
     shell: '''
@@ -387,7 +466,8 @@ rule just_images:
     input:
         rules.just_frames.input,
         expand(rules.split_images.output,
-               domain=["real","fake"],
+               sim_domain=["real","fake"],
+               sigproc_domain=["real","fake"],
                tier=["gauss"], apa=apa_iota)
 
 ## note, list-of-list for the split_images rule
@@ -396,8 +476,9 @@ rule all_images:
         rules.just_images.input,
         expand(
             rules.plot_split_images.output,
-            domain = ["real","fake"],
-            tier = TIERS,
+            sim_domain = ["real","fake"],
+            sigproc_domain = ["real","fake"],
+            tier = SIM_TIERS,
             event  = [0], apa=[0], plane=["U","V","W"],
             ext    = ["png"], # , "pdf", "svg"],
             cmap   = ["seismic", "viridis"],

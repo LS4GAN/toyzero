@@ -61,7 +61,7 @@ function(input, taps, wires, thread='single')
 
     local splat(n, ) = [
         local anode = anodes[n];
-        tz.splat(anode, params.daq, params.lar)
+        tz.splat(anode, params.daq, params.lar, random)
     ] + tap_out("splat", n);
 
     local oneapa(n) = pg.pipeline(splat(n));

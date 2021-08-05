@@ -188,7 +188,7 @@ local ut = import "utils.jsonnet";
                 toffset: 0,
                 nticks: daq.nticks,
             },
-        }, nin=1, nout=1),
+        }, nin=1, nout=1, uses=[anode]),
 
         ret: pg.pipeline([ductor, reframer]),
     }.ret,
@@ -220,22 +220,50 @@ local ut = import "utils.jsonnet";
 
 
     // Return a DepoSplat node
-    splat(anode, daq, lar) :: pg.pnode({
-        type: "DepoSplat",
-        name: "splat%d"%anode.data.ident,
-        data: {
-            tag: "splat",
-            anode: wc.tn(anode),
-            continuous: false,
-            fixed: true,
-            drift_speed: lar.drift_speed,
-            readout_time: daq.nticks*daq.tick, 
-            start_time: 0,
-            tick: daq.tick,
-            nsigma: 3,
-        }
-    }, nin=1, nout=1, uses=[anode]),
+    splat(anode, daq, lar, rnd=null) :: {
 
+        local apaid = anode.data.ident,
+        local frame_tag = "splat%d" % apaid,
+
+        local rextra = if std.type(rnd) == "null"
+                       then { data:{}, uses:[] }
+                       else {
+                           data: { fluctuate:true, rng: wc.tn(rnd) },
+                           uses: [rnd]
+                       },
+
+        local splat = pg.pnode({
+            type: "DepoSplat",
+            name: "splat%d"%apaid,
+            data: {
+                frame_tag: frame_tag,
+                anode: wc.tn(anode),
+                continuous: false,
+                fixed: true,
+                drift_speed: lar.drift_speed,
+                readout_time: daq.nticks*daq.tick, 
+                start_time: 0,
+                tick: daq.tick,
+                nsigma: 3,
+            } + rextra.data
+        }, nin=1, nout=1, uses=[anode]+rextra.uses),
+
+        local reframer = pg.pnode({
+            type: 'Reframer',
+            name: 'Reframer%d' % apaid,
+            data: {
+                anode: wc.tn(anode),
+                tags: [],
+                frame_tag: frame_tag,
+                fill: 0.0,
+                tbin: 0,
+                toffset: 0,
+                nticks: daq.nticks,
+            },
+        }, nin=1, nout=1, uses=[anode]),
+
+        ret: pg.pipeline([splat, reframer]),
+    }.ret,
 
 
     // top-level stuff

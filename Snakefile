@@ -21,6 +21,7 @@ plotdir = os.path.abspath(os.path.join(outdir, plotdir))
 seed = config.get("seed", "1,2,3,4")
 ntracks = int(config.get("ntracks", 10))
 nevents = int(config.get("nevents", 10))
+depotimes = config.get("depotimes", "-3*ms,6*ms")
 wcloglvl = config.get("wcloglvl", "info")
 
 # limit number of threads per wire-cell job
@@ -147,6 +148,7 @@ rule gen_depos:
         temp(depos_file)
     shell: '''
     wirecell-gen depo-lines \
+    --time {depotimes} \
     --seed {seed} \
     --tracks {ntracks} --sets {nevents} \
     --diagonal '{params.diag}' --corner '{params.corn}' \
@@ -298,17 +300,7 @@ rule plot_splat_frames:
     output:
         f'{plotdir}/frames/splat/splat-apa{{apa}}.{{ext}}'
     shell:'''
-    wirecell-gen plot-sim {input} {output} -p frames -b 0,2560 --tag splat{wildcards.apa}"
-    '''
-
-rule plot_frames_hidpi:
-    input:
-        f'{plotdir}/frames-{{tier}}-{{sim_domain}}-{{sigproc_domain}}-apa{{apa}}.pdf'
-    output:
-        f'{plotdir}/hidpi/frames-{{tier}}-{{sim_domain}}-{{sigproc_domain}}-apa{{apa}}.png'
-
-    shell:'''
-    pdftoppm -rx 600 -ry 600 {input} | pnmtopng > {output}
+    wirecell-gen plot-sim {input} {output} -p frames -b 0,2560 --tag splat{wildcards.apa}
     '''
 
 
@@ -320,7 +312,7 @@ rule all_splat_frames:
     input:
         rules.just_splat_frames.input,        
         expand(rules.plot_splat_frames.output,
-               ext=["png","pdf"], apa=apa_iota)
+               ext=["png"], apa=apa_iota)
     
 
 rule just_frames:
@@ -341,7 +333,7 @@ rule all_frames:
                sim_domain=["real","fake"],
                sigproc_domain=["real","fake"],
                tier=SIM_TIERS,
-               ext=["png","pdf"], apa=apa_iota),
+               ext=["png"], apa=apa_iota),
 
         # expand(rules.plot_frames_hidpi.output,
         #        sim_domain=["real","fake"],
@@ -375,6 +367,12 @@ def rebin_number(w):
     if w.tier == "orig":
         return 0;
     return sigproc_rebin
+def tick_offset(w):
+    if w.tier == 'splat':
+        # approx, chosen by comparing gauss W to splat W plots
+        # this is pre-rebin ticks, 0.5us.
+        return 125+8
+    return 0
 
 rule split_images:
     input:
@@ -385,14 +383,34 @@ rule split_images:
     params:
         outpath = datadir+'/images/{tier}/{sim_domain}-{sigproc_domain}',
         mdpath = 'metadata-{apa}.json',
-        rebin = rebin_number
+        rebin = rebin_number,
+        tickoff = tick_offset
     run:
         if not os.path.exists(params.outpath):
             os.makedirs(params.outpath)
         mdpath = os.path.join(params.outpath, params.mdpath)
         with open(mdpath, "w") as fp:
             fp.write(json.dumps(dict(wildcards), indent=4))
-        shell('wirecell-util frame-split -r {params.rebin} -m {mdpath} -a {params.outpath}/{split_array_pattern} {input}')
+        shell('wirecell-util frame-split -t {params.tickoff} -r {params.rebin} -m {mdpath} -a {params.outpath}/{split_array_pattern} {input}')
+
+rule split_splat_images:
+    input:
+        f'{datadir}/frames/splat/splat-frames-apa{{apa}}.npz'
+    output:
+        expand(datadir+'/images/{{tier}}/splat/protodune-{{tier}}{{apa}}-{event}-{plane}.npz',
+               **split_outer_product)
+    params:
+        outpath = datadir+'/images/{tier}/splat',
+        mdpath = 'metadata-{apa}.json',
+        rebin = rebin_number,
+        tickoff = tick_offset
+    run:
+        if not os.path.exists(params.outpath):
+            os.makedirs(params.outpath)
+        mdpath = os.path.join(params.outpath, params.mdpath)
+        with open(mdpath, "w") as fp:
+            fp.write(json.dumps(dict(wildcards), indent=4))
+        shell('wirecell-util frame-split -t {params.tickoff} -r {params.rebin} -m {mdpath} -a {params.outpath}/{split_array_pattern} {input}')
 
 
 def plot_split_params(w):
@@ -422,20 +440,26 @@ def plot_split_params(w):
         vmax=20000
         baseline="0"
 
-    # we make 2 zoom levels.  1 is full, 2 is something less.
-    factor = 2
-    if int(w.zoomlevel) == 1:
-        factor = 10
-    if w.plane == "W":
-        chanmax=96*factor
-    else:
-        chanmax=80*factor
-    tickmax=400*factor
-    if w.tier != "orig":
-        tickmax = tickmax // sigproc_rebin
-    zoom=f'0:{chanmax},0:{tickmax}'
+    # we make 2 zoom levels.  1 is full, 2 is something zoomed in.
 
-    title=f'{w.tier} {dim}, event {w.event}, APA {w.apa}, {w.plane} plane'
+    chan0 = 0
+    nchans = 960 if w.plane == "W" else 800
+    tick0 = 0
+    nticks = 6000
+
+    # pick a region with good activity in all 3 views
+    if int(w.zoomlevel) == 2:
+        nchans = int(nchans / 5)
+        tick0 = 3600
+        nticks = 800
+
+    if w.tier != "orig":
+        tick0 = int(tick0/sigproc_rebin)
+        nticks = int(nticks/sigproc_rebin)
+
+    zoom = f'{chan0}:{chan0+nchans},{tick0}:{tick0+nticks}'
+    title = f'{w.tier} {dim}, event {w.event}, APA {w.apa}, {w.plane} plane'
+
     return locals()
 
 
@@ -443,14 +467,7 @@ def plot_split_params(w):
 ## Note, we must match the input here by hand to the output above
 ## because the domain is not included in the expand above but is here.
 ## Above is 1->N, here is 1->1.
-rule plot_split_images:
-    input:
-        datadir+'/images/{tier}/{sim_domain}-{sigproc_domain}/protodune-{tier}{apa}-{event}-{plane}.npz',
-    output:
-        plotdir+'/images/{tier}/{sim_domain}-{sigproc_domain}/{cmap}/protodune-{tier}{apa}-{event}-{plane}-zoom{zoomlevel}.{ext}'
-    params:
-        p = plot_split_params
-    shell: '''
+plot_split_shell = '''
     wirecell-util npz-to-img --cmap {wildcards.cmap} \
     --title '{params.p[title]}' \
     --xtitle 'Relative ticks number' \
@@ -461,6 +478,23 @@ rule plot_split_images:
     --mask 0 \
     --dpi 600 --baseline='{params.p[baseline]}' -o {output} {input}
     '''
+rule plot_split_images:
+    input:
+        datadir+'/images/{tier}/{sim_domain}-{sigproc_domain}/protodune-{tier}{apa}-{event}-{plane}.npz',
+    output:
+        plotdir+'/images/{tier}/{sim_domain}-{sigproc_domain}/{cmap}/protodune-{tier}{apa}-{event}-{plane}-zoom{zoomlevel}.{ext}'
+    params:
+        p = plot_split_params
+    shell: plot_split_shell
+
+rule plot_split_splat_images:
+    input:
+        datadir+'/images/{tier}/splat/protodune-{tier}{apa}-{event}-{plane}.npz',
+    output:
+        plotdir+'/images/{tier}/splat/{cmap}/protodune-{tier}{apa}-{event}-{plane}-zoom{zoomlevel}.{ext}'
+    params:
+        p = plot_split_params
+    shell: plot_split_shell
 
 rule just_images:
     input:
@@ -470,18 +504,53 @@ rule just_images:
                sigproc_domain=["real","fake"],
                tier=["gauss"], apa=apa_iota)
 
+rule just_splat_images:
+    input:
+        rules.just_splat_frames.input,
+        expand(rules.split_splat_images.output,
+               tier=["splat"], apa=apa_iota)
+
 ## note, list-of-list for the split_images rule
 rule all_images:
     input:
         rules.just_images.input,
+        rules.just_splat_images.input,
+        expand(
+            rules.plot_split_images.output,
+            sim_domain = ["fake"],
+            sigproc_domain = ["fake"],
+            tier = ["orig"],
+            event  = [0], apa=apa_iota, plane=["U","V","W"],
+            ext    = ["png"],
+            cmap   = ["seismic"],
+            zoomlevel=[1, 2],
+        ),
+        expand(
+            rules.plot_split_images.output,
+            sim_domain = ["real"],
+            sigproc_domain = ["real"],
+            tier = ["orig"],
+            event  = [0], apa=apa_iota, plane=["U","V","W"],
+            ext    = ["png"],
+            cmap   = ["seismic"],
+            zoomlevel=[1, 2],
+        ),
         expand(
             rules.plot_split_images.output,
             sim_domain = ["real","fake"],
             sigproc_domain = ["real","fake"],
-            tier = SIM_TIERS,
-            event  = [0], apa=[0], plane=["U","V","W"],
-            ext    = ["png"], # , "pdf", "svg"],
-            cmap   = ["seismic", "viridis"],
+            tier = ["gauss"],
+            event  = [0], apa=apa_iota, plane=["U","V","W"],
+            ext    = ["png"],
+            cmap   = ["viridis"],
+            zoomlevel=[1, 2],
+        ),
+        expand(
+            rules.plot_split_splat_images.output,
+            tier = ["splat"],
+            event  = [0], apa=apa_iota, plane=["U","V","W"],
+            ext    = ["png"],
+            cmap   = ["viridis"],
             zoomlevel=[1, 2],
         )
 

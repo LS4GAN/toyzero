@@ -22,10 +22,9 @@
 //
 // - splat :: the output of DepoSplat.
 //
-// The file name may have a "%" formatter which will be interpolated
-// against the APA ID number.  If omitted, "-apa%d" will be inserted
-// at the end of the base file name just prior to the extention
-// (likely .npz).
+// The file name must have a "%d" formatter which will be interpolated
+// against the APA ID number.  Tap files likely one of .tar, .tar.gz
+// or .tar.bz2.
 
 local wc = import "wirecell.jsonnet";
 local pg = import "pgraph.jsonnet";
@@ -54,12 +53,15 @@ function(input, taps, wires, thread='single')
 
     local drifter = tz.drifter(params.det.volumes, params.lar, random);
 
-    local tap_out(tap, apaid) =
-        if std.objectHas(taps, tap)
-        then [io.frame_out(tap+"%d", apaid, taps[tap], tags=[tap+"%d"], cap = tap=="gauss")]
-        else [];
+    local tap_out(tap, apaid, cap=true) = {
+        local name = "%s%d"%[tap,apaid],
+        local digi = tap == "raw" || tap == "orig",
+        res: if std.objectHas(taps, tap)
+             then [io.frame_tap(name, io.frame_sink(name, taps[tap]%apaid, tags=[name], digitize=digi), name, cap)]
+             else []
+    }.res;
 
-    local splat(n, ) = [
+    local splat(n) = [
         local anode = anodes[n];
         tz.splat(anode, params.daq, params.lar, random)
     ] + tap_out("splat", n);

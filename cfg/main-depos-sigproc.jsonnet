@@ -24,15 +24,14 @@
 // not given, only signal is simulated.
 //
 // If "taps" is given it specifies a mapping from a data tier key word
-// to a file name.  The key is one of the conventional tags:
+// to a file pattern.  The key is one of the conventional tags:
 //
 // - orig :: means the ADC-level frames out of the simulation
 // - gauss :: means the signal processing with Gaussian filter
 //
-// The file name may have a "%" formatter which will be interpolated
-// against the APA ID number.  If omitted, "-apa%d" will be inserted
-// at the end of the base file name just prior to the extention
-// (likely .npz).
+// The file pattern MUST have a %d format marker which will be
+// interpolated on the APA ID.
+
 
 local wc = import "wirecell.jsonnet";
 local pg = import "pgraph.jsonnet";
@@ -72,10 +71,13 @@ function(input, taps, wires, resps_sim, resps_sigproc, noisef=null, thread='sing
                       params.daq.nticks,
                       params.daq.tick);
 
-    local tap_out(tap, apaid) =
-        if std.objectHas(taps, tap)
-        then [io.frame_out(tap+"%d", apaid, taps[tap], tags=[tap+"%d"], cap = tap=="gauss")]
-        else [];
+    local tap_out(tap, apaid, cap=false) = {
+        local name = "%s%d"%[tap,apaid],
+        local digi = tap == "raw" || tap == "orig",
+        res: if std.objectHas(taps, tap)
+             then [io.frame_tap(name, io.frame_sink(name, taps[tap]%apaid, tags=[name], digitize=digi), name, cap)]
+             else []
+    }.res;
 
     local sim(n) = [
         local anode = anodes[n];
@@ -95,7 +97,7 @@ function(input, taps, wires, resps_sim, resps_sigproc, noisef=null, thread='sing
            params.daq.nticks, params.daq.tick),
     ] + tap_out("raw", n) + [
         sp(anodes[n], robjs_sigproc.fr, robjs_sigproc.er, spfilt, adcpermv)
-    ] + tap_out("gauss", n);
+    ] + tap_out("gauss", n, true);
 
     local oneapa(n) = pg.pipeline(sim(n) + nfsp(n));
 

@@ -25,11 +25,35 @@ local ut = import 'utils.jsonnet';
         }}, nin=1, nout=1),
 
     // Use to cap off a frame stream with a sink.
-    frame_sink(name="frame-sink") :: pg.pnode({
+    frame_cap(name="frame-cap") :: pg.pnode({
         type: "DumpFrames",
         name: name,
     }, nin=1, nout=0),    
 
+
+    // Sink a frame to a tar stream.  Filename extension can be .tar,
+    // .tar.bz2 or .tar.gz.  There's no monkey business with a %d in
+    // the file name.  Pass in a unique, literal file name.  Same goes
+    // for tags.
+    frame_sink(name, outfile, tags=[], digitize=false) :: 
+        pg.pnode({
+            type: "FrameFileSink",
+            name: name,
+            data: {
+                outname: outfile,
+                tags: tags,
+                digitize: digitize,
+            },
+        }, nin=1, nout=0),
+        
+    frame_tap(name, sink, tag, cap=false) :: 
+        if cap
+        then sink
+        else pg.fan.tap('FrameFanout', sink, name,
+                        tag_rules=[ // one for each port!
+                            {frame:{'.*':tag}},
+                            {frame:{'.*':tag}},
+                        ]),
 
     // Save frames to outfile.
     //
@@ -52,7 +76,7 @@ local ut = import 'utils.jsonnet';
     frame_out(name, index, outfile, tags=["gauss%d"], digitize=false, cap=true) :: {
         local nam = if ut.haspct(name) then name%index else name,
         local tint = [if ut.haspct(t) then t%index else t for t in tags],
-        local end = if cap then [$.frame_sink(nam)] else [],
+        local end = if cap then [$.frame_cap(nam)] else [],
         local outf = if ut.haspct(outfile) then outfile%index else ut.basename_append(outfile, "-apa%d"%index),
 
         ret: pg.pipeline([$.frame_save_npz(nam, outf, digitize=digitize, tags=tint)]

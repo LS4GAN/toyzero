@@ -13,10 +13,12 @@ configfile: "toyzero.yaml"
 ##  $ snakemake --config ntracks=100 [...]
 datadir = config.get("datadir", "data")
 plotdir = config.get("plotdir", "plots")
+logdir = config.get("logdir", "logs")
 outdir = config.get("outdir", os.environ.get("TOYZERO_OUTDIR", "."))
 
 datadir = os.path.abspath(os.path.join(outdir, datadir))
 plotdir = os.path.abspath(os.path.join(outdir, plotdir))
+logdir  = os.path.abspath(os.path.join(outdir, logdir))
     
 seed = config.get("seed", "1,2,3,4")
 ntracks = int(config.get("ntracks", 10))
@@ -176,42 +178,49 @@ rule all_depos:
 wct_sigproc_cfg = 'cfg/main-depos-sigproc.jsonnet'
 wct_splat_cfg = 'cfg/main-depos-splat.jsonnet'
 
+def wct_dots_params(w):
+    if w.verb == "brief":
+        return "--no-params"
+    return ""
 # note, we pass bogus TLAs so don't use the generated json for
 # anything real!
 rule wct_dots:
     input:
         config = wct_sigproc_cfg
     output:
-        json = temp(f'{plotdir}/dots/cfg.json'),
-        dot  = temp(f'{plotdir}/dots/dag.dot'),
-        png  = f'{plotdir}/dots/dag.png',
-        pdf  = f'{plotdir}/dots/dag.pdf'
+        json = temp(f'{plotdir}/dots/cfg-{{verb}}.json'),
+        dot  = temp(f'{plotdir}/dots/dag-{{verb}}.dot'),
+        png  = f'{plotdir}/dots/dag-{{verb}}.png',
+        pdf  = f'{plotdir}/dots/dag-{{verb}}.pdf'
+    params:
+        wct_dots_params
     shell: '''
     mkdir -p {plotdir}/dots;
     wcsonnet \
     -P cfg \
     -A input=DEPOS-FILE \
-    --tla-code taps='{{"orig":"frame-orig.npz","gauss":"frame-gauss.npz"}}' \
+    --tla-code taps='{{"orig":"frame-orig-apa%d.tar.bz2","gauss":"frame-gauss-apa%d.tar.bz2"}}' \
     -A wires=WIRES-FILE \
     -A resps_sim=RESPS-SIM-FILE \
     -A resps_sigproc=RESPS-SIGPROC-FILE \
     -A noisef=NOISE-FILE \
     {input.config} > {output.json};
-    wirecell-pgraph dotify --no-params --jpath=-1 {output.json} {output.dot} ;
+    wirecell-pgraph dotify {params} --jpath=-1 {output.json} {output.dot} ;
     dot -Tpng -o {output.png} {output.dot} ;
     dot -Tpdf -o {output.pdf} {output.dot}
     '''
 rule all_dots:
     input:
-        rules.wct_dots.output
+        expand(rules.wct_dots.output, verb=["full", "brief"])
 
 # this gives the pattern for one per-APA frame file.  The %d is
 # interpolated by wire-cell configuration.
 
-frames_wildcard = f'{datadir}/frames/{{tier}}/{{sim_domain}}-{{sigproc_domain}}-frames-apa{{apa}}.npz'
+frames_ext = "tar.bz2"
+frames_wildcard = f'{datadir}/frames/{{tier}}/{{sim_domain}}-{{sigproc_domain}}-frames-apa{{apa}}.{frames_ext}'
 
 def frame_taps(w):
-    frames_pattern = f'{datadir}/frames/{{tier}}/{{sim_domain}}-{{sigproc_domain}}-frames-apa%d.npz'
+    frames_pattern = f'{datadir}/frames/{{tier}}/{{sim_domain}}-{{sigproc_domain}}-frames-apa%d.{frames_ext}'
     taps = list()
     for tier in ('orig', 'gauss'):
         d = dict(w)
@@ -222,7 +231,7 @@ def frame_taps(w):
     return '{%s}'%taps
 
 def sim_frame_files():
-    frames_pattern = datadir + '/frames/{tier}/{{sim_domain}}-{{sigproc_domain}}-frames-apa{apaid}.npz'
+    frames_pattern = datadir + '/frames/{tier}/{{sim_domain}}-{{sigproc_domain}}-frames-apa{apaid}.' + frames_ext
     return expand(frames_pattern, tier=SIM_TIERS, apaid = apa_iota)
 
 rule sim_frames:
@@ -237,6 +246,8 @@ rule sim_frames:
         temp(sim_frame_files())
     params:
         taps = frame_taps
+    benchmark:
+        f'{logdir}/sim-frames-{{sim_domain}}-{{sigproc_domain}}.tsv'
     shell: '''
     rm -f {output}; 
     wire-cell \
@@ -261,9 +272,9 @@ rule splat_frames:
         depos = depos_file,
         config = wct_splat_cfg
     output:
-        temp([f'{datadir}/frames/splat/splat-frames-apa{apa}.npz' for apa in apa_iota])
+        temp([f'{datadir}/frames/splat/splat-frames-apa{apa}.{frames_ext}' for apa in apa_iota])
     params:
-        taps = f'{{"splat":"{datadir}/frames/splat/splat-frames-apa%d.npz"}}'
+        taps = f'{{"splat":"{datadir}/frames/splat/splat-frames-apa%d.{frames_ext}"}}'
     shell: '''
     rm -f {output}; 
     wire-cell \
@@ -296,7 +307,7 @@ rule plot_frames:
 
 rule plot_splat_frames:
     input:
-        f'{datadir}/frames/splat/splat-frames-apa{{apa}}.npz'
+        f'{datadir}/frames/splat/splat-frames-apa{{apa}}.tar.gz'
     output:
         f'{plotdir}/frames/splat/splat-apa{{apa}}.{{ext}}'
     shell:'''
@@ -357,7 +368,7 @@ split_outer_product = dict(
     plane  = ["U","V","W"],
 )
 
-# frames_wildcard = f'{datadir}/frames/{{tier}}/{{domain}}-frames-apa{{apa}}.npz'
+# frames_wildcard = f'{datadir}/frames/{{tier}}/{{domain}}-frames-apa{{apa}}.{frames_ext}'
 
 # this pattern is formatted inside wirecell-util frame-split.
 split_array_pattern = '{detector}-{tag}-{index}-{planeletter}'
@@ -385,6 +396,8 @@ rule split_images:
         mdpath = 'metadata-{apa}.json',
         rebin = rebin_number,
         tickoff = tick_offset
+    benchmark:
+        f'{logdir}/split-images-{{tier}}-{{sim_domain}}-{{sigproc_domain}}-apa{{apa}}.tsv'
     run:
         if not os.path.exists(params.outpath):
             os.makedirs(params.outpath)
@@ -395,7 +408,7 @@ rule split_images:
 
 rule split_splat_images:
     input:
-        f'{datadir}/frames/splat/splat-frames-apa{{apa}}.npz'
+        f'{datadir}/frames/splat/splat-frames-apa{{apa}}.{frames_ext}'
     output:
         expand(datadir+'/images/{{tier}}/splat/protodune-{{tier}}{{apa}}-{event}-{plane}.npz',
                **split_outer_product)
@@ -499,14 +512,11 @@ rule plot_split_splat_images:
 rule just_images:
     input:
         rules.just_frames.input,
+        rules.just_splat_frames.input,
         expand(rules.split_images.output,
                sim_domain=["real","fake"],
                sigproc_domain=["real","fake"],
-               tier=["gauss"], apa=apa_iota)
-
-rule just_splat_images:
-    input:
-        rules.just_splat_frames.input,
+               tier=["gauss"], apa=apa_iota),
         expand(rules.split_splat_images.output,
                tier=["splat"], apa=apa_iota)
 
@@ -514,7 +524,6 @@ rule just_splat_images:
 rule all_images:
     input:
         rules.just_images.input,
-        rules.just_splat_images.input,
         expand(
             rules.plot_split_images.output,
             sim_domain = ["fake"],

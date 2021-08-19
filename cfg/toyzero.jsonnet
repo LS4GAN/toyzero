@@ -1,11 +1,10 @@
 local wc = import "wirecell.jsonnet";
 local pg = import "pgraph.jsonnet";
-
+local ut = import "utils.jsonnet";
 
 // define general object for toyzero
 
 {
-    protodune_params: import "pgrapher/experiment/pdsp/simparams.jsonnet",
 
     // return a "wireobj"
     wire_file(filename) : {
@@ -25,54 +24,66 @@ local pg = import "pgraph.jsonnet";
     } for vol in volumes],
 
 
-    // Return "PlaneImpactResponse" objects.  daq and elec likely come
-    // from params.
-    pirs(respf, daq, elec): {
+    field_response(filename) :: {
+        type: "FieldResponse",
+        name: filename,
+        data: { filename: filename }
+    },
 
-        local field_resp = {
-            type: "FieldResponse",
-            name: respf,
-            data: {
-                filename: respf
-            }
-        },
-        
-        local binning = { nticks: daq.nticks, tick: daq.tick },
+    elec_response(shaping, gain, postgain, nticks, tick=0.5*wc.us) :: {
+        type: "ColdElecResponse",
+        data: {
+            shaping: shaping,
+            gain: gain,
+            postgain: postgain,
+            nticks: nticks,
+            tick: tick,
+        },            
+    },
 
-        local rc_resp = {
-            type: "RCResponse",
-            data: binning {
-                width: 1.0*wc.ms,
-            }
-        },
-
-        local elec_resp = {
-            type: "ColdElecResponse",
-            data: binning {
-                shaping: elec.shaping,
-                gain: elec.gain,
-                postgain: elec.postgain,
-            },            
-        },
-
-
+    rc_response(width, nticks, tick=0.5*wc.us) :: {
+        type: "RCResponse",
+        data: {
+            width: width,
+            nticks: nticks,
+            tick: tick,
+        }
+    },
+    
+    // Return "PlaneImpactResponse" objects.
+    // fr is field_response object.
+    // srs is list of short response objects, eg elec_resp
+    // lrs is list of long response objects, eg rc_response
+    pirs(fr, srs, lrs): {
         ret: [ {
             type: "PlaneImpactResponse",
             name : "PIRplane%d" % plane,
             data : {
                 plane: plane,
-                field_response: wc.tn(field_resp),
-                short_responses: [wc.tn(elec_resp)],
+                field_response: wc.tn(fr),
+                short_responses: [wc.tn(r) for r in srs],
                 // this needs to be big enough for convolving FR*CE
                 overall_short_padding: 200*wc.us,
-                long_responses: [wc.tn(rc_resp)],
+                long_responses: [wc.tn(r) for r in lrs],
                 // this needs to be big enough to convolve RC
                 long_padding: 1.5*wc.ms,
             },
-            uses: [field_resp, elec_resp, rc_resp],
+            uses: [fr] + srs + lrs,
         } for plane in [0,1,2]],
-
     }.ret,
+
+    adcpermv(adc) :: 
+        ((1 << adc.resolution)-1) / (adc.fullscale[1]-adc.fullscale[0]),
+
+    responses(frfile, elec, daq, width=1.0*wc.ms) :: {
+
+        fr: $.field_response(frfile),
+        er: $.elec_response(elec.shaping, elec.gain, elec.postgain,
+                            daq.nticks, daq.tick),
+        rc: $.rc_response(width, daq.nticks, daq.tick),
+        pirs: $.pirs(self.fr, [self.er], [self.rc])
+    },
+
 
     default_seeds: [0, 1, 2, 3, 4],
     random(seeds = $.default_seeds) : {
@@ -105,19 +116,53 @@ local pg = import "pgraph.jsonnet";
     }, nin=1, nout=1),
     
 
+    // A per anode configure node for simulating noise.
+    noisesim(anode, noisef, daq, chstat=null, rnd=$.random()) : {
+        local apaid = anode.data.ident,
+        
+        local noise_model = {
+            type: "EmpiricalNoiseModel",
+            name: "emperical-noise-model-%d" % apaid,
+            data: {
+                anode: wc.tn(anode),
+                chanstat: if std.type(chstat) == "null" then "" else wc.tn(chstat),
+                spectra_file: noisef,
+                nsamples: daq.nticks,
+                period: daq.tick,
+                wire_length_scale: 1.0*wc.cm, // optimization binning
+            },
+            uses: [anode] + if std.type(chstat) == "null" then [] else [chstat],
+        },
+        ret: pg.pnode({
+            type: "AddNoise",
+            name: "addnoise-" + noise_model.name,
+            data: {
+                rng: wc.tn(rnd),
+                model: wc.tn(noise_model),
+                nsamples: daq.nticks,
+                replacement_percentage: 0.02, // random optimization
+            }}, nin=1, nout=1, uses=[rnd, noise_model]),
+    }.ret,
 
-    // A pipeline of nodes to simulate one APA.
-    //
-    // The vol, daq, adc, lar likely comes from params.
-    // The noisef should be a file name.
-    // fixme: probably should be broken up...
-    apasim(anode, pirs, vol, daq, adc, lar, noisef=null, rnd=$.random()) : {
+    digisim(anode, adc) :: {
+        local apaid = anode.data.ident,
+        ret: pg.pnode({
+            type: "Digitizer",
+            name: 'Digitizer%d' % apaid,
+            data : adc {
+                anode: wc.tn(anode),
+                frame_tag: "orig%d"%apaid,
+            }
+        }, nin=1, nout=1, uses=[anode]),
+    }.ret,
+
+    sigsim(anode, pirs, daq, lar, rnd=$.random()) : {
 
         local apaid = anode.data.ident,
 
         local ductor = pg.pnode({
             type:'DepoTransform',
-            name:'DepoTransformt%d' % apaid,
+            name:'DepoTransform%d' % apaid,
             data: {
                 rng: wc.tn(rnd),
                 anode: wc.tn(anode),
@@ -143,61 +188,95 @@ local pg = import "pgraph.jsonnet";
                 toffset: 0,
                 nticks: daq.nticks,
             },
-        }, nin=1, nout=1),
-
-        local digitizer = pg.pnode({
-            type: "Digitizer",
-            name: 'Digitizer%d' % apaid,
-            data : adc {
-                anode: wc.tn(anode),
-                frame_tag: "orig%d"%apaid,
-            }
         }, nin=1, nout=1, uses=[anode]),
 
-        
-        local csdb = null,
+        ret: pg.pipeline([ductor, reframer]),
+    }.ret,
 
-        local noise_model = {
-            type: "EmpiricalNoiseModel",
-            name: "emperical-noise-model-%d" % apaid,
-            data: {
-                anode: wc.tn(anode),
-                chanstat: if std.type(csdb) == "null" then "" else wc.tn(csdb),
-                spectra_file: noisef,
-                nsamples: daq.nticks,
-                period: daq.tick,
-                wire_length_scale: 1.0*wc.cm, // optimization binning
-            },
-            uses: [anode] + if std.type(csdb) == "null" then [] else [csdb],
-        },
-        local noise = pg.pnode({
-            type: "AddNoise",
-            name: "addnoise-" + noise_model.name,
-            data: {
-                rng: wc.tn(rnd),
-                model: wc.tn(noise_model),
-                nsamples: daq.nticks,
-                replacement_percentage: 0.02, // random optimization
-            }}, nin=1, nout=1, uses=[rnd, noise_model]),
-        
-        local beg = [ductor, reframer],
+    // A kitchen sink pipeline of nodes to simulate one APA.
+    //
+    // The daq, adc, lar likely comes from params.
+    //
+    // Fullest chain is sig + noise -> adc
+    //
+    // If no lar or pirs is given, then no signal.
+    // If no noisef given, then no noise.
+    // If no adc given, then no digitizer
+    // The tier can be 'adc' or something else if no digitizer.
+    sim(anode, pirs, daq, adc, lar, noisef=null, tier='adc', rnd=$.random()) : {
 
-        local mid = if std.type(noisef) == "null" then [] else [noise],
+        local apaid = anode.data.ident,
 
-        local end = [digitizer],
+        local beg = if std.type(lar) == "null" || std.type(pirs) == "null" then [] else [
+            $.sigsim(anode, pirs, daq, lar, rnd)],
+
+        local mid = if std.type(noisef) == "null" then [] else [
+            $.noisesim(anode, noisef, daq, rnd=rnd)],
+
+        local end = if tier == 'adc' then [$.digisim(anode, adc)] else [],
 
         pipeline: pg.pipeline(beg + mid + end),
     }.pipeline,
 
+
+    // Return a DepoSplat node
+    splat(anode, daq, lar, rnd=null) :: {
+
+        local apaid = anode.data.ident,
+        local frame_tag = "splat%d" % apaid,
+
+        local rextra = if std.type(rnd) == "null"
+                       then { data:{}, uses:[] }
+                       else {
+                           data: { fluctuate:true, rng: wc.tn(rnd) },
+                           uses: [rnd]
+                       },
+
+        local splat = pg.pnode({
+            type: "DepoSplat",
+            name: "splat%d"%apaid,
+            data: {
+                frame_tag: frame_tag,
+                anode: wc.tn(anode),
+                continuous: false,
+                fixed: true,
+                drift_speed: lar.drift_speed,
+                readout_time: daq.nticks*daq.tick, 
+                start_time: 0,
+                tick: daq.tick,
+                nsigma: 3,
+            } + rextra.data
+        }, nin=1, nout=1, uses=[anode]+rextra.uses),
+
+        local reframer = pg.pnode({
+            type: 'Reframer',
+            name: 'Reframer%d' % apaid,
+            data: {
+                anode: wc.tn(anode),
+                tags: [],
+                frame_tag: frame_tag,
+                fill: 0.0,
+                tbin: 0,
+                toffset: 0,
+                nticks: daq.nticks,
+            },
+        }, nin=1, nout=1, uses=[anode]),
+
+        ret: pg.pipeline([splat, reframer]),
+    }.ret,
+
+
+    // top-level stuff
+
     local plugins = [
         "WireCellSio", "WireCellAux",
         "WireCellGen", "WireCellSigProc",
-        "WireCellApps", "WireCellPgraph"],
+        "WireCellApps", "WireCellPgraph", "WireCellTbb"],
     
 
-    main(graph) :: {
-        local app = {
-            type: 'Pgrapher',
+    main(graph, app) :: {
+        local appcfg = {
+            type: app,
             data: {
                 edges: pg.edges(graph)
             },
@@ -206,9 +285,9 @@ local pg = import "pgraph.jsonnet";
             type: "wire-cell",
             data: {
                 plugins: plugins,
-                apps: ["Pgrapher"],
+                apps: [appcfg.type]
             }
         },
-        seq: [cmdline] + pg.uses(graph) + [app],
+        seq: [cmdline] + pg.uses(graph) + [appcfg],
     }.seq
 }

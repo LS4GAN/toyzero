@@ -3,11 +3,14 @@
 # This is the default toyzero config file.
 # Use like:
 #   snakemake --configfile mycfg.yaml -jall all
+# Or further, like
+#   snakemake --configfile mycfg.yaml -jall all --config outdir=other
+# See top of snakefile for what can be set here.
 outdir: "."
-datadir: "data"
-plotdir: "plots"
+# best to set something unique on the CLI!!!
+# seed will be used as an intermediate under outdir
 seed: "1,2,3,4"
 ntracks: 10
-nevents: 10
-# how noisy wire-cell should be.  "debug" is more, "error" is less
-wcloglvl: info
+nevents: 1
+# how noisy wire-cell should be.  "debug" is more, "info" is less
+wcloglvl: debug

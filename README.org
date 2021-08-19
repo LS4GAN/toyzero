@@ -3,7 +3,7 @@
 #+setupfile: https://ls4gan.github.io/other/setup-page.org
 #+options: toc:t
 
-The toyzero package provides first steps toward [[https://ls4gan.github.io/][LS4GAN]].
+The toyzero package provides first steps toward [[https://ls4gan.github.io/][LS4GAN]].  See also [[file:next-steps.org]]
 
 * Goals
 :PROPERTIES:
@@ -291,6 +291,28 @@ The ~all_frames~ target generates "frame" data from depos by running the
 Wire-Cell simulation.  The "frame" file format is described elsewhere.
 For here, we treat it as a temporary.
 
+The simulation is internally structured as a DAG of components
+exchanging data flow as shown:
+
+#+ATTR_HTML: :width 90%
+[[file:plots/dots/depos-sim-adc/dag.png]]
+
+Frames come in different flavor depending on the final output data
+tier.  We name and describe them as:
+
+- noiseless :: these are integer ADC waveforms reflecting existence of
+  only ionization electrons and no electronics noise.  They are
+  bipolar on the induction planes "U" and "V and unipolar on
+  collection plane "W".  They have a fixed "baseline" at an ADC value
+  depending on the plane and are sparse (baseline-padded) at locations
+  away from any ionization.
+
+- signal :: these floating point measures of the original ionization
+  electrons after signal processing and noise filtering is applied to
+  signal and noise simulation.  The waveforms from all planes are
+  unipolar and give a measure of the original ionization distribution.
+  The waveforms have a "baseline" of 0.0 and are sparse
+  (baseline-padded) at locations away from any ionization.
 
 ** images
 :PROPERTIES:
@@ -308,8 +330,8 @@ match.  For example:
 protodune-orig-0-1-W (960, 6000)
 #+end_example
 
-These image arrays have shape ~(nchan, ntick)~.  That is each row is the
-waveform from one channel and has ~ntick=6000~ samples (3ms).  When
+These image arrays have shape ~(nchan, ntick)~.  That is, each row is
+the waveform from one channel and has ~ntick=6000~ samples (3ms).  When
 visualized with matplotlib's ~imshow()~ you will see channels as Y-axis,
 tics as X-axis.
 
@@ -318,6 +340,10 @@ This "W" file holds one array of 960 channels and 6000 sample time
 "W" (collection plane aka plane 2 counting from 0).  "U" and "V" are
 induction planes and each will have 800 channels and the
 contemporaneous 6000 ticks.
+
+Like frames above, images come in corresponding flavors.  See section
+[[frames]] for description.
+
 
 * Plotting
 :PROPERTIES:
@@ -547,3 +573,48 @@ made available.  If the changes are generally useful, please consider
 making a PR!
  
 
+* Production
+
+We run from containers.  Eg, as a mongo ~docker~ command that runs
+~snakemake~ in the ~toyzero~ container.
+
+#+begin_example
+
+  $ docker run \
+    --user user \
+    --volume (pwd):/data \
+    -ti ls4gan/toyzero:0.3.0 \
+    "cd toyzero && \
+     snakemake just_tar --notemp -j1 -p \
+     --config seed=1234 outdir=/data ntracks=100 nevents=10 wcloglvl=debug threads=8"
+
+#+end_example
+
+Or, one layer down in the ~wirecell~ container, assuming you have
+~toyzero~ checked out locally:
+
+#+begin_example
+
+  $ cd .. # parent holding local toyzero/
+  $ mkdir run
+  $ cd run/
+  $ cp -a ../toyzero/{Snakefile,cfg,toyzero.yaml} .
+  $ docker run \
+      --user user \
+      --volume (pwd):/data \
+      -ti ls4gan/wirecell:0.16.0 \
+      "cd /data && \
+       snakemake just_tar -j1 -p \
+       --config seed=1234 ntracks=100 nevents=10 wcloglvl=debug threads=8"
+  $ ls -l toyzero-100-10-1234.tar
+
+#+end_example
+
+Note: will likely want to set ~threads=1~ for batch and *MUST* set
+~seed=XYZ~ uniquely for each submission.  The ~outdir~ setting may be used
+if output should not go to the CWD.  The tar file base name can be
+controlled with ~outname~.  Intermediate files that eventually go in to
+the tar file land in ~{outdir}/seed-{seed}/~.  The ~./.snakemake/~
+directory receives snakemake control and log files.  If run with
+~--notemp~ then (ironically, should be named ~--yestemp~) temporary files
+marked with ~temp()~ in the Snakefile are *kept*.

@@ -16,15 +16,21 @@ plotdir = config.get("plotdir", "plots")
 logdir = config.get("logdir", "logs")
 outdir = config.get("outdir", os.environ.get("TOYZERO_OUTDIR", "."))
 
-datadir = os.path.abspath(os.path.join(outdir, datadir))
-plotdir = os.path.abspath(os.path.join(outdir, plotdir))
-logdir  = os.path.abspath(os.path.join(outdir, logdir))
     
 seed = config.get("seed", "1,2,3,4")
 ntracks = int(config.get("ntracks", 10))
 nevents = int(config.get("nevents", 10))
 depotimes = config.get("depotimes", "-3*ms,6*ms")
 wcloglvl = config.get("wcloglvl", "info")
+
+seedlst_ = str(seed).replace(",","-")
+seeddir = f'seed-{seedlst_}'
+outuniq = os.path.abspath(os.path.join(outdir, seeddir))
+datadir = os.path.abspath(os.path.join(outuniq, datadir))
+plotdir = os.path.abspath(os.path.join(outuniq, plotdir))
+logdir  = os.path.abspath(os.path.join(outuniq, logdir))
+
+outname = config.get("outname", f'{outdir}/toyzero-{ntracks}-{nevents}-{seed}')
 
 # Which intermediate data tier(s) to save from the full simulation
 # chain.  It may include "orig".  The "gauss" tier will always be included.
@@ -38,7 +44,7 @@ wct_threads = int(config.get("threads", 1))
 
 # single threaded uses Pgrapher, multi uses TbbFlow
 wct_threading = "single" if wct_threads == 1 else "multi"
-print(f'WCT THREADS {wct_threads} ({wct_threading})')
+# print(f'WCT THREADS {wct_threads} ({wct_threading})')
 
 # The rest are hard wired for now
 wcdata_url = "https://github.com/WireCell/wire-cell-data/raw/master"
@@ -112,10 +118,14 @@ rule plot_resp:
     wirecell-sigproc plot-response {input} {output}
     '''
 
-rule all_resp:
+rule just_resp:
     input:
         rules.get_resp_real.output,
         rules.gen_resp_fake.output,
+
+rule all_resp:
+    input:
+        rules.just_resp.input,
         expand(rules.plot_resp.output, domain=["real","fake"])
 
 # wires - get wires file
@@ -140,9 +150,13 @@ rule plot_wires:
     wirecell-util plot-wires {input} {output}
     '''
 
-rule all_wires:
+rule just_wires:
     input:
         rules.get_wires.output,
+
+rule all_wires:
+    input:
+        rules.just_wires.input,
         rules.plot_wires.output
 
 
@@ -174,9 +188,14 @@ rule plot_depos:
     wirecell-gen plot-sim {input} {output} -p depo
     '''
         
+rule just_depos:
+    input:
+        expand(rules.gen_depos.output, wire=wires)
+
+
 rule all_depos:
     input:
-        expand(rules.gen_depos.output, wire=wires),
+        rules.just_depos.input,
         expand(rules.plot_depos.output, wire=wires)
 
 
@@ -254,6 +273,8 @@ rule sim_frames:
         temp(sim_frame_files())
     params:
         taps = frame_taps
+    log:
+        f'{logdir}/sim-frames-{{sim_domain}}-{{sigproc_domain}}.log'
     benchmark:
         f'{logdir}/sim-frames-{{sim_domain}}-{{sigproc_domain}}.tsv'
     shell: '''
@@ -261,7 +282,7 @@ rule sim_frames:
     wire-cell \
     --threads {wct_threads} \
     -A thread={wct_threading} \
-    -l stdout -L {config[wcloglvl]} \
+    -l {log} -L {config[wcloglvl]} \
     -P cfg \
     -A input={input.depos} \
     --tla-code 'taps={params.taps}' \
@@ -283,12 +304,16 @@ rule splat_frames:
         temp([f'{datadir}/frames/splat/splat-frames-apa{apa}.{frames_ext}' for apa in apa_iota])
     params:
         taps = f'{{"splat":"{datadir}/frames/splat/splat-frames-apa%d.{frames_ext}"}}'
+    log:
+        f'{logdir}/splat-frames.log'
+    benchmark:
+        f'{logdir}/splat-frames.tsv'
     shell: '''
     rm -f {output}; 
     wire-cell \
     --threads {wct_threads} \
     -A thread={wct_threading} \
-    -l stdout -L {config[wcloglvl]} \
+    -l {log} -L {config[wcloglvl]} \
     -P cfg \
     -A input={input.depos} \
     --tla-code 'taps={params.taps}' \
@@ -337,9 +362,13 @@ rule all_splat_frames:
 rule just_frames:
     input:
         expand(rules.sim_frames.output,
-               sim_domain=["real","fake"],
-               sigproc_domain=["real","fake"],
+               sim_domain=["real"],
+               sigproc_domain=["fake"],
                ),
+        expand(rules.sim_frames.output,
+               sim_domain=["fake"],
+               sigproc_domain=["fake"],
+               )
         
 
 rule all_frames:
@@ -520,11 +549,18 @@ rule plot_split_splat_images:
 rule just_images:
     input:
         rules.just_frames.input,
-        rules.just_splat_frames.input,
         expand(rules.split_images.output,
-               sim_domain=["real","fake"],
-               sigproc_domain=["real","fake"],
+               sim_domain=["real"],
+               sigproc_domain=["fake"],
                tier=["gauss"], apa=apa_iota),
+        expand(rules.split_images.output,
+               sim_domain=["fake"],
+               sigproc_domain=["fake"],
+               tier=["gauss"], apa=apa_iota)
+
+rule just_splat_images:
+    input:
+        rules.just_splat_frames.input,
         expand(rules.split_splat_images.output,
                tier=["splat"], apa=apa_iota)
 
@@ -536,32 +572,26 @@ rule all_images:
             rules.plot_split_images.output,
             sim_domain = ["fake"],
             sigproc_domain = ["fake"],
-            tier = ["orig"],
-            event  = [0], apa=apa_iota, plane=["U","V","W"],
-            ext    = ["png"],
-            cmap   = ["seismic"],
-            zoomlevel=[1, 2],
-        ),
-        expand(
-            rules.plot_split_images.output,
-            sim_domain = ["real"],
-            sigproc_domain = ["real"],
-            tier = ["orig"],
-            event  = [0], apa=apa_iota, plane=["U","V","W"],
-            ext    = ["png"],
-            cmap   = ["seismic"],
-            zoomlevel=[1, 2],
-        ),
-        expand(
-            rules.plot_split_images.output,
-            sim_domain = ["real","fake"],
-            sigproc_domain = ["real","fake"],
             tier = ["gauss"],
             event  = [0], apa=apa_iota, plane=["U","V","W"],
             ext    = ["png"],
             cmap   = ["viridis"],
             zoomlevel=[1, 2],
         ),
+        expand(
+            rules.plot_split_images.output,
+            sim_domain = ["real"],
+            sigproc_domain = ["fake"],
+            tier = ["gauss"],
+            event  = [0], apa=apa_iota, plane=["U","V","W"],
+            ext    = ["png"],
+            cmap   = ["viridis"],
+            zoomlevel=[1, 2],
+        )
+
+rule all_splat:
+    input:
+        rules.just_splat_images.input,
         expand(
             rules.plot_split_splat_images.output,
             tier = ["splat"],
@@ -572,6 +602,11 @@ rule all_images:
         )
 
 
+rule just:
+    input:
+        rules.just_frames.input,
+        rules.just_images.input
+
 rule all:
     input:
         rules.all_resp.input,
@@ -579,4 +614,18 @@ rule all:
         rules.all_depos.input,
         rules.all_frames.input,
         rules.all_images.input
+
+rule just_tar:
+    input:
+        rules.just.input,
+    output:
+        f'{outname}.tar'
+    shell: '''
+    tar --exclude data/depos \
+        --exclude data/noise \
+        --exclude data/wires \
+        --exclude data/resps \
+        --exclude data/frames/orig \
+        -cf {output} {outuniq}
+    '''
 

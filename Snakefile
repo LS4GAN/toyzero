@@ -26,8 +26,16 @@ nevents = int(config.get("nevents", 10))
 depotimes = config.get("depotimes", "-3*ms,6*ms")
 wcloglvl = config.get("wcloglvl", "info")
 
-# limit number of threads per wire-cell job
+# Which intermediate data tier(s) to save from the full simulation
+# chain.  It may include "orig".  The "gauss" tier will always be included.
+frame_tap_tiers = list(config.get("frame_tap_tiers", ('orig', )))
+if "gauss" not in frame_tap_tiers:
+    frame_tap_tiers += ["gauss"]
+
+
+# limit number of threads given to a wire-cell job
 wct_threads = int(config.get("threads", 1))
+
 # single threaded uses Pgrapher, multi uses TbbFlow
 wct_threading = "single" if wct_threads == 1 else "multi"
 print(f'WCT THREADS {wct_threads} ({wct_threading})')
@@ -222,7 +230,7 @@ frames_wildcard = f'{datadir}/frames/{{tier}}/{{sim_domain}}-{{sigproc_domain}}-
 def frame_taps(w):
     frames_pattern = f'{datadir}/frames/{{tier}}/{{sim_domain}}-{{sigproc_domain}}-frames-apa%d.{frames_ext}'
     taps = list()
-    for tier in ('orig', 'gauss'):
+    for tier in frame_tap_tiers:
         d = dict(w)
         d["tier"] = tier
         taps.append('"%s":"%s"' % (tier, frames_pattern.format(**d)))

@@ -5,13 +5,34 @@ local ut = import 'utils.jsonnet';
 
 {
     // Return a numpy depo source configuration.
-    npz_source_depo(name, filename) :: pg.pnode({
-        type: 'NumpyDepoLoader',
-        name: name,
-        data: {
-            filename: filename
-        }
-    }, nin=0, nout=1),
+    npz_source_depo(name, filename, loadby="set") ::
+        if loadby == "set"
+        then pg.pnode({
+            type: 'NumpyDepoSetLoader',
+            name: name,
+            data: {
+                filename: filename
+            }
+        }, nin=0, nout=1)
+        else pg.pnode({
+            type: 'NumpyDepoLoader',
+            name: name,
+            data: {
+                filename: filename
+            }
+        }, nin=0, nout=1),
+    
+    tar_source_depo(name, filename) ::
+        pg.pnode({
+            type: 'DepoFileSource',
+            name: name,
+            data: { inname: filename }
+        }, nin=0, nout=1),
+            
+    depo_source(filename, name="") ::
+        if std.endsWith(filename, ".npz")
+        then $.npz_source_depo(name, filename)
+        else $.tar_source_depo(name, filename),
 
 
     // Return a numpy frame saver configuration.

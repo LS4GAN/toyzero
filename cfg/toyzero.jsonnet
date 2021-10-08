@@ -1,6 +1,7 @@
 local wc = import "wirecell.jsonnet";
 local pg = import "pgraph.jsonnet";
 local ut = import "utils.jsonnet";
+local img = import "img.jsonnet";
 
 // define general object for toyzero
 
@@ -14,7 +15,7 @@ local ut = import "utils.jsonnet";
 
     anodes(wireobj, volumes) : [ {
         type: "AnodePlane",
-        name: "AnodePlane%d" % vol.wires,
+        name: "%d" % vol.wires,
         data: {
             ident: vol.wires,
             wire_schema: wc.tn(wireobj),
@@ -57,7 +58,7 @@ local ut = import "utils.jsonnet";
     pirs(fr, srs, lrs): {
         ret: [ {
             type: "PlaneImpactResponse",
-            name : "PIRplane%d" % plane,
+            name : "%d" % plane,
             data : {
                 plane: plane,
                 field_response: wc.tn(fr),
@@ -95,19 +96,29 @@ local ut = import "utils.jsonnet";
     },
 
 
-    /// Make a drifter for all volumes
-    drifter(vols, lar, rnd=$.random(), time_offset=0, fluctuate=true) : pg.pnode({
-        local xregions = wc.unique_list(std.flattenArrays([v.faces for v in vols])),
-        
-        type: "Drifter",
-        data: lar {
-            rng: wc.tn(rnd),
-            xregions: xregions,
-            time_offset: time_offset,
-            fluctuate: fluctuate,
-        },
-    }, nin=1, nout=1, uses=[rnd]),
-
+    /// Make a drifter for all volumes.  If loadby="set" we use the
+    /// depo set drifter and call this function again recursively to
+    /// make the "singular" drifter.
+    drifter(vols, lar, rnd=$.random(), time_offset=0, fluctuate=true, loadby="set") ::
+        if loadby=="set"
+        then pg.pnode({
+            type: 'DepoSetDrifter',
+            data: {
+                drifter: "Drifter"
+            }
+        }, nin=1, nout=1, uses=[$.drifter(vols, lar, rnd, time_offset, fluctuate, "singular")])
+        else pg.pnode({
+            local xregions = wc.unique_list(std.flattenArrays([v.faces for v in vols])),
+            
+            type: "Drifter",
+            data: lar {
+                rng: wc.tn(rnd),
+                xregions: xregions,
+                time_offset: time_offset,
+                fluctuate: fluctuate,
+            },
+        }, nin=1, nout=1, uses=[rnd]),
+    
     bagger(daq) : pg.pnode({
         type:'DepoBagger',
         data: {
@@ -122,7 +133,7 @@ local ut = import "utils.jsonnet";
         
         local noise_model = {
             type: "EmpiricalNoiseModel",
-            name: "emperical-noise-model-%d" % apaid,
+            name: "%d" % apaid,
             data: {
                 anode: wc.tn(anode),
                 chanstat: if std.type(chstat) == "null" then "" else wc.tn(chstat),
@@ -135,7 +146,7 @@ local ut = import "utils.jsonnet";
         },
         ret: pg.pnode({
             type: "AddNoise",
-            name: "addnoise-" + noise_model.name,
+            name: noise_model.name,
             data: {
                 rng: wc.tn(rnd),
                 model: wc.tn(noise_model),
@@ -148,7 +159,7 @@ local ut = import "utils.jsonnet";
         local apaid = anode.data.ident,
         ret: pg.pnode({
             type: "Digitizer",
-            name: 'Digitizer%d' % apaid,
+            name: '%d' % apaid,
             data : adc {
                 anode: wc.tn(anode),
                 frame_tag: "orig%d"%apaid,
@@ -162,7 +173,7 @@ local ut = import "utils.jsonnet";
 
         local ductor = pg.pnode({
             type:'DepoTransform',
-            name:'DepoTransform%d' % apaid,
+            name:'%d' % apaid,
             data: {
                 rng: wc.tn(rnd),
                 anode: wc.tn(anode),
@@ -179,7 +190,7 @@ local ut = import "utils.jsonnet";
 
         local reframer = pg.pnode({
             type: 'Reframer',
-            name: 'Reframer%d' % apaid,
+            name: '%d' % apaid,
             data: {
                 anode: wc.tn(anode),
                 tags: [],
@@ -234,7 +245,7 @@ local ut = import "utils.jsonnet";
 
         local splat = pg.pnode({
             type: "DepoSplat",
-            name: "splat%d"%apaid,
+            name: "%d"%apaid,
             data: {
                 frame_tag: frame_tag,
                 anode: wc.tn(anode),
@@ -250,7 +261,7 @@ local ut = import "utils.jsonnet";
 
         local reframer = pg.pnode({
             type: 'Reframer',
-            name: 'Reframer%d' % apaid,
+            name: '%d' % apaid,
             data: {
                 anode: wc.tn(anode),
                 tags: [],
@@ -265,12 +276,14 @@ local ut = import "utils.jsonnet";
         ret: pg.pipeline([splat, reframer]),
     }.ret,
 
+    img: img,
+
 
     // top-level stuff
 
     local plugins = [
         "WireCellSio", "WireCellAux",
-        "WireCellGen", "WireCellSigProc",
+        "WireCellGen", "WireCellSigProc", "WireCellImg", 
         "WireCellApps", "WireCellPgraph", "WireCellTbb"],
     
 

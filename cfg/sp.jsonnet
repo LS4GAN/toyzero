@@ -24,7 +24,7 @@ function(anode, fieldresp, elecresp, spfilt, adcpermv, perchan=null) {
 
     local sigproc = pg.pnode({
         type: 'OmnibusSigProc',
-        name: 'sigproc%d' % apaid,
+        name: '%d' % apaid,
         data: {
             /**  
                 *  Optimized SP parameters (May 2019)

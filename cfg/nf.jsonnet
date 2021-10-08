@@ -11,7 +11,7 @@ function(anode, fieldresp, chndb, nsamples, tick=0.5*wc.us, rms_cuts=[]) {
 
     local single = {
         type: 'pdOneChannelNoise',
-        name: 'ocn%d'%apaid,
+        name: '%d'%apaid,
         data: {
             noisedb: wc.tn(chndb),
             anode: wc.tn(anode),
@@ -31,7 +31,7 @@ function(anode, fieldresp, chndb, nsamples, tick=0.5*wc.us, rms_cuts=[]) {
     local obnf = pg.pnode({
 
         type: 'OmnibusNoiseFilter',
-        name: 'nf%d'%apaid,
+        name: '%d'%apaid,
         data: {
 
             // Nonzero forces the number of ticks in the waveform

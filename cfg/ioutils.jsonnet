@@ -22,17 +22,17 @@ local ut = import 'utils.jsonnet';
             }
         }, nin=0, nout=1),
     
-    tar_source_depo(name, filename) ::
+    tar_source_depo(name, filename, scale=1.0) ::
         pg.pnode({
             type: 'DepoFileSource',
             name: name,
-            data: { inname: filename }
+            data: { inname: filename, scale: scale }
         }, nin=0, nout=1),
             
-    depo_source(filename, name="") ::
+    depo_source(filename, name="", scale=1.0) ::
         if std.endsWith(filename, ".npz")
         then $.npz_source_depo(name, filename)
-        else $.tar_source_depo(name, filename),
+        else $.tar_source_depo(name, filename, scale),
 
 
     // Return a numpy frame saver configuration.
@@ -56,7 +56,7 @@ local ut = import 'utils.jsonnet';
     // .tar.bz2 or .tar.gz.  There's no monkey business with a %d in
     // the file name.  Pass in a unique, literal file name.  Same goes
     // for tags.
-    frame_sink(name, outfile, tags=[], digitize=false) :: 
+    frame_sink(name, outfile, tags=[], digitize=false, dense=null) :: 
         pg.pnode({
             type: "FrameFileSink",
             name: name,
@@ -64,6 +64,7 @@ local ut = import 'utils.jsonnet';
                 outname: outfile,
                 tags: tags,
                 digitize: digitize,
+                dense: dense,
             },
         }, nin=1, nout=0),
         

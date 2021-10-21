@@ -7,7 +7,7 @@ local pg = import "pgraph.jsonnet";
 // Note, spfilt are a list of filter objects which MUST match
 // hard-wired names in the C++, sorry.  See, eg
 // pgrapher/experiment/pdsp/sp-filters.jsonnet.
-function(anode, fieldresp, elecresp, spfilt, adcpermv, perchan=null) {
+function(anode, fieldresp, elecresp, spfilt, adcpermv, perchan=null, override={}) {
     local apaid = anode.data.ident,
 
     // if perchan file name is given we need to add this to a
@@ -76,7 +76,7 @@ function(anode, fieldresp, elecresp, spfilt, adcpermv, perchan=null) {
             
             isWrapped: false,
             // process_planes: [0, 2],
-        }
+        } + override
     }, nin=1, nout=1, uses=[anode, fieldresp, elecresp] + pcuses + spfilt),
 
     res: sigproc

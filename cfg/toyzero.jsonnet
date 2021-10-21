@@ -6,6 +6,10 @@ local img = import "img.jsonnet";
 // define general object for toyzero
 
 {
+    // forward
+    io: import "ioutils.jsonnet",
+    nf: import "nf.jsonnet",
+    sp: import "sp.jsonnet",
 
     // return a "wireobj"
     wire_file(filename) : {
@@ -281,13 +285,19 @@ local img = import "img.jsonnet";
 
     // top-level stuff
 
-    local plugins = [
+    local basic_plugins = [
         "WireCellSio", "WireCellAux",
         "WireCellGen", "WireCellSigProc", "WireCellImg", 
-        "WireCellApps", "WireCellPgraph", "WireCellTbb"],
+        "WireCellApps"],
     
+    local app_plugins = {
+        'TbbFlow': ["WireCellTbb"],
+        'PGrapher': ["WireCellPgraph"],
+    },
 
-    main(graph, app) :: {
+
+    main(graph, app='Pgrapher', extra_plugins = []) :: {
+        local plugins = std.set(basic_plugins + extra_plugins + app_plugins[app]),
         local appcfg = {
             type: app,
             data: {

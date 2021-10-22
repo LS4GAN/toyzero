@@ -22,9 +22,12 @@ function (anode, ts, plane_channels, prefix="dnnroi")
         data: {
             anode: wc.tn(anode),
             intags: ['loose_lf%d'%apaid, 'mp2_roi%d'%apaid, 'mp3_roi%d'%apaid],
+            decon_charge_tag: "decon_charge%d" %apaid,
             outtag: "dnnsp%du"%apaid,
-            cbeg: plane_channels[0][0],
-            cend: plane_channels[0][1],
+            // cbeg: plane_channels[0][0],
+            // cend: plane_channels[0][1],
+            cbeg: 0,
+            cend: 800,
             torch_script: wc.tn(ts)
         }
     }, nin=1, nout=1, uses=[ts]);
@@ -34,9 +37,12 @@ function (anode, ts, plane_channels, prefix="dnnroi")
         data: {
             anode: wc.tn(anode),
             intags: ['loose_lf%d'%apaid, 'mp2_roi%d'%apaid, 'mp3_roi%d'%apaid],
+            decon_charge_tag: "decon_charge%d" %apaid,
             outtag: "dnnsp%dv"%apaid,
-            cbeg: plane_channels[1][0],
-            cend: plane_channels[1][1],
+            // cbeg: plane_channels[1][0],
+            // cend: plane_channels[1][1],
+            cbeg: 800,
+            cend: 1600,
             torch_script: wc.tn(ts)
         }
     }, nin=1, nout=1, uses=[ts]);

@@ -74,5 +74,7 @@ function (anode, det)
               override=override),
     
     dnnsp(ts) :: dnnroi(anode, ts, $.channel_range),
+    //dnnsp(ts) :: dnnroi(anode, ts, det.channel_range(0)),
+
 
 }

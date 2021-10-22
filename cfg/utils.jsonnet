@@ -20,4 +20,5 @@
         local l = std.split(filename, "."),
         ret:"%s%s.%s"%[l[0], suffix, l[1]]
     }.ret,
+    
 }

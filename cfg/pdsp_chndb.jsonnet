@@ -11,7 +11,7 @@ local wc = import "wirecell.jsonnet";
     perfect(anode, fr, nsamples, tick=0.5*wc.us) :: {
         local apaid = anode.data.ident,
         type:'OmniChannelNoiseDB',
-        name: 'ocndbperfect-%s' % anode.name,
+        name: std.toString(apaid),
         uses: [anode, fr],
         data: {
             anode: wc.tn(anode),

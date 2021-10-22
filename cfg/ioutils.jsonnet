@@ -77,32 +77,6 @@ local ut = import 'utils.jsonnet';
                             {frame:{'.*':tag}},
                         ]),
 
-    // Save frames to outfile.
-    //
-    // name, outfile and elements of the tags list may have a single
-    // "%" format code which if it exists will be interpolated again
-    // the "index".
-    //
-    // If outfile has not "%" format the string "-apa%d" will be
-    // appended to the base file name (prior to .ext).
-    //
-    // The "name" is used to give unique objects.
-    //
-    // The tags determine which among all available frames/trace tags
-    // to save.
-    //
-    // If digitize is true, frame samples will be truncated to int
-    // else left as float.
-    //
-    // If cap is false, the resulting node acts as a filter.
-    frame_out(name, index, outfile, tags=["gauss%d"], digitize=false, cap=true) :: {
-        local nam = if ut.haspct(name) then name%index else name,
-        local tint = [if ut.haspct(t) then t%index else t for t in tags],
-        local end = if cap then [$.frame_cap(nam)] else [],
-        local outf = if ut.haspct(outfile) then outfile%index else ut.basename_append(outfile, "-apa%d"%index),
 
-        ret: pg.pipeline([$.frame_save_npz(nam, outf, digitize=digitize, tags=tint)]
-                         + end)
-    }.ret,
     
 }

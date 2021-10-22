@@ -10,6 +10,7 @@ local img = import "img.jsonnet";
     io: import "ioutils.jsonnet",
     nf: import "nf.jsonnet",
     sp: import "sp.jsonnet",
+    util: ut,
 
     // return a "wireobj"
     wire_file(filename) : {

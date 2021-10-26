@@ -12,7 +12,7 @@ local pg = import "pgraph.jsonnet";
 
 // The prefix is prepended to all internal node names.
 
-function (anode, ts, plane_channels, prefix="dnnroi") 
+function (anode, ts, prefix="dnnroi") 
     local apaid = anode.data.ident;
     local prename = prefix + std.toString(apaid);
 
@@ -21,43 +21,38 @@ function (anode, ts, plane_channels, prefix="dnnroi")
         name: prename+"u",
         data: {
             anode: wc.tn(anode),
+            plane: 0,
             intags: ['loose_lf%d'%apaid, 'mp2_roi%d'%apaid, 'mp3_roi%d'%apaid],
             decon_charge_tag: "decon_charge%d" %apaid,
             outtag: "dnnsp%du"%apaid,
-            // cbeg: plane_channels[0][0],
-            // cend: plane_channels[0][1],
-            cbeg: 0,
-            cend: 800,
-            torch_script: wc.tn(ts)
+            forward: wc.tn(ts)
         }
-    }, nin=1, nout=1, uses=[ts]);
+    }, nin=1, nout=1, uses=[ts, anode]);
     local dnnroi_v = pg.pnode({
         type: "DNNROIFinding",
         name: prename+"v",
         data: {
             anode: wc.tn(anode),
+            plane: 1,
             intags: ['loose_lf%d'%apaid, 'mp2_roi%d'%apaid, 'mp3_roi%d'%apaid],
             decon_charge_tag: "decon_charge%d" %apaid,
             outtag: "dnnsp%dv"%apaid,
-            // cbeg: plane_channels[1][0],
-            // cend: plane_channels[1][1],
-            cbeg: 800,
-            cend: 1600,
-            torch_script: wc.tn(ts)
+            forward: wc.tn(ts)
         }
-    }, nin=1, nout=1, uses=[ts]);
+    }, nin=1, nout=1, uses=[ts, anode]);
     local dnnroi_w = pg.pnode({
-        type: "ChannelSelector",
+        type: "PlaneSelector",
         name: prename+"w",
         data: {
-            channels: std.range(plane_channels[2][0], plane_channels[2][1]-1),
+            anode: wc.tn(anode),
+            plane: 2,
             tags: ["gauss%d"%apaid],
             tag_rules: [{
                 frame: {".*":"DNNROIFinding"},
                 trace: {["gauss%d"%apaid]:"dnnsp%dw"%apaid},
             }],
         }
-    }, nin=1, nout=1);
+    }, nin=1, nout=1, uses=[anode]);
 
     local dnnpipes = [dnnroi_u, dnnroi_v, dnnroi_w];
     local dnnfanout = pg.pnode({

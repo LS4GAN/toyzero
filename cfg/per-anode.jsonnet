@@ -73,7 +73,7 @@ function (anode, det)
               tz.adcpermv(det.params.adc),
               override=override),
     
-    dnnsp(ts) :: dnnroi(anode, ts),
+    dnnsp(ts, output_scale=1.0) :: dnnroi(anode, ts, output_scale=output_scale),
 
 
 }

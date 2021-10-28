@@ -12,7 +12,7 @@ local pg = import "pgraph.jsonnet";
 
 // The prefix is prepended to all internal node names.
 
-function (anode, ts, prefix="dnnroi") 
+function (anode, ts, prefix="dnnroi", output_scale=1.0) 
     local apaid = anode.data.ident;
     local prename = prefix + std.toString(apaid);
 
@@ -25,6 +25,7 @@ function (anode, ts, prefix="dnnroi")
             intags: ['loose_lf%d'%apaid, 'mp2_roi%d'%apaid, 'mp3_roi%d'%apaid],
             decon_charge_tag: "decon_charge%d" %apaid,
             outtag: "dnnsp%du"%apaid,
+            output_scale: output_scale,
             forward: wc.tn(ts)
         }
     }, nin=1, nout=1, uses=[ts, anode]);
@@ -37,6 +38,7 @@ function (anode, ts, prefix="dnnroi")
             intags: ['loose_lf%d'%apaid, 'mp2_roi%d'%apaid, 'mp3_roi%d'%apaid],
             decon_charge_tag: "decon_charge%d" %apaid,
             outtag: "dnnsp%dv"%apaid,
+            output_scale: output_scale,
             forward: wc.tn(ts)
         }
     }, nin=1, nout=1, uses=[ts, anode]);
